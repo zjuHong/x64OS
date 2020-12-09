@@ -1,0 +1,4 @@
+romimage: file=/usr/local/share/bochs/BIOS-bochs-latest
+vgaromimage: file=/usr/local/share/bochs/VGABIOS-lgpl-latest
+floppya: 1_44=boot.img, status=inserted
+boot: floppy
