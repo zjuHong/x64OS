@@ -8,7 +8,7 @@ floppya: 1_44=boot.img, status=inserted
 # 从软盘启动
 boot: floppy
 #输出日志
-log: bochsout.txt
+#log: bochsout.txt
 
 # 置鼠标不可用
 mouse: enabled=0
