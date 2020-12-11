@@ -16,7 +16,7 @@
 all: boot.bin loader.bin
 
 loader.bin:
-	nasm loader.asm -o loader.bin -I ./fat12.inc
+	nasm loader.asm -o loader.bin
 
 boot.bin:
 	nasm boot.asm -o boot.bin
