@@ -15,6 +15,8 @@
 
 #include "lib.h"
 #include "printk.h"
+#include "gate.h"
+#include "trap.h"
 
 void Start_Kernel(void)
 {
@@ -25,7 +27,7 @@ void Start_Kernel(void)
 	Pos.YResolution = 900;
 
 	Pos.XPosition = 0;
-	Pos.YPosition = 5;
+	Pos.YPosition = 0;
 
 	Pos.XCharSize = 8;
 	Pos.YCharSize = 16;
@@ -67,6 +69,15 @@ void Start_Kernel(void)
 	}
 
 	color_printk(YELLOW,BLACK,"Hello\t\t World!\n");
+
+	load_TR(8);
+
+	set_tss64(0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
+
+	sys_vector_init();
+
+	i = 1/0;
+//	i = *(int *)0xffff80000aa00000;
 
 	while(1)
 		;
