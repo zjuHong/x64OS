@@ -15,5 +15,5 @@ mouse: enabled=0
 #键盘配置
 keyboard: keymap=#$BXSHARE/keymaps/x11-pc-us.map
 #内存容量
-megs: 32
+megs: 512
 
