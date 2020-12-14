@@ -16,7 +16,7 @@
 all: system
 	objcopy -I elf64-x86-64 -S -R ".eh_frame" -R ".comment" -O binary system kernel.bin
 
-system:	head.o entry.o main.o printk.o trap.o memory.o interrupt.o
+system:	head.o entry.o main.o printk.o trap.o memory.o interrupt.o task.o
 	ld -b elf64-x86-64 -z muldefs -o system head.o entry.o main.o printk.o trap.o memory.o interrupt.o -T Kernel.lds 
 
 head.o:	head.S
@@ -28,7 +28,7 @@ entry.o: entry.S
 	as --64 -o entry.o entry.s
 	
 main.o:	main.c
-	gcc  -mcmodel=large -fno-builtin -m64 -c main.c
+	gcc  -mcmodel=large -fno-builtin -fno-stack-protector -m64 -c main.c
 	
 printk.o: printk.c
 	gcc  -mcmodel=large -fno-builtin -fno-stack-protector -m64 -c printk.c
@@ -41,6 +41,9 @@ memory.o: memory.c
 
 interrupt.o: interrupt.c
 	gcc  -mcmodel=large -fno-builtin -m64 -c interrupt.c
+
+task.o: task.c
+	gcc  -mcmodel=large -fno-builtin -m64 -c task.c
 
 clean:
 	rm -rf *.o *.s~ *.s *.S~ *.c~ *.h~ system  Makefile~ Kernel.lds~ kernel.bin 

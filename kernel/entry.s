@@ -66,7 +66,6 @@ ret_from_exception:
 .global ret_from_intr; ret_from_intr:
  jmp RESTORE_ALL
 
-
 .global divide_error; divide_error:
  pushq $0
  pushq %rax

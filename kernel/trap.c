@@ -15,136 +15,115 @@
 
 #include "trap.h"
 #include "gate.h"
+#include "ptrace.h"
 
 /*
-
+	0
 */
 
-void do_divide_error(unsigned long rsp,unsigned long error_code)
+void do_divide_error(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_divide_error(0),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_divide_error(0),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 
 /*
-
+	1
 */
 
-void do_debug(unsigned long rsp,unsigned long error_code)
+void do_debug(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_debug(1),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_debug(1),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 
 /*
-
+	2
 */
 
-void do_nmi(unsigned long rsp,unsigned long error_code)
+void do_nmi(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_nmi(2),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_nmi(2),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 
 /*
-
+	3
 */
 
-void do_int3(unsigned long rsp,unsigned long error_code)
+void do_int3(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_int3(3),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_int3(3),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 
 /*
-
+	4
 */
 
-void do_overflow(unsigned long rsp,unsigned long error_code)
+void do_overflow(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_overflow(4),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_overflow(4),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 
 /*
-
+	5
 */
 
-void do_bounds(unsigned long rsp,unsigned long error_code)
+void do_bounds(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_bounds(5),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_bounds(5),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 
 /*
-
+	6
 */
 
-void do_undefined_opcode(unsigned long rsp,unsigned long error_code)
+void do_undefined_opcode(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_undefined_opcode(6),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_undefined_opcode(6),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 
 /*
-
+	7
 */
 
-void do_dev_not_available(unsigned long rsp,unsigned long error_code)
+void do_dev_not_available(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_dev_not_available(7),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_dev_not_available(7),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 
 /*
-
+	8
 */
 
-void do_double_fault(unsigned long rsp,unsigned long error_code)
+void do_double_fault(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_double_fault(8),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_double_fault(8),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 
 /*
-
+	9
 */
 
-void do_coprocessor_segment_overrun(unsigned long rsp,unsigned long error_code)
+void do_coprocessor_segment_overrun(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_coprocessor_segment_overrun(9),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_coprocessor_segment_overrun(9),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 
 /*
-
+	10
 */
 
-void do_invalid_TSS(unsigned long rsp,unsigned long error_code)
+void do_invalid_TSS(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_invalid_TSS(10),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_invalid_TSS(10),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 
 	if(error_code & 0x01)
 		color_printk(RED,BLACK,"The exception occurred during delivery of an event external to the program,such as an interrupt or an earlier exception.\n");
@@ -166,14 +145,12 @@ void do_invalid_TSS(unsigned long rsp,unsigned long error_code)
 }
 
 /*
-
+	11
 */
 
-void do_segment_not_present(unsigned long rsp,unsigned long error_code)
+void do_segment_not_present(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_segment_not_present(11),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_segment_not_present(11),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 
 	if(error_code & 0x01)
 		color_printk(RED,BLACK,"The exception occurred during delivery of an event external to the program,such as an interrupt or an earlier exception.\n");
@@ -195,14 +172,12 @@ void do_segment_not_present(unsigned long rsp,unsigned long error_code)
 }
 
 /*
-
+	12
 */
 
-void do_stack_segment_fault(unsigned long rsp,unsigned long error_code)
+void do_stack_segment_fault(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_stack_segment_fault(12),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_stack_segment_fault(12),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 
 	if(error_code & 0x01)
 		color_printk(RED,BLACK,"The exception occurred during delivery of an event external to the program,such as an interrupt or an earlier exception.\n");
@@ -224,14 +199,12 @@ void do_stack_segment_fault(unsigned long rsp,unsigned long error_code)
 }
 
 /*
-
+	13
 */
 
-void do_general_protection(unsigned long rsp,unsigned long error_code)
+void do_general_protection(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_general_protection(13),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_general_protection(13),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 
 	if(error_code & 0x01)
 		color_printk(RED,BLACK,"The exception occurred during delivery of an event external to the program,such as an interrupt or an earlier exception.\n");
@@ -253,18 +226,16 @@ void do_general_protection(unsigned long rsp,unsigned long error_code)
 }
 
 /*
-
+	14
 */
 
-void do_page_fault(unsigned long rsp,unsigned long error_code)
+void do_page_fault(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
 	unsigned long cr2 = 0;
 
 	__asm__	__volatile__("movq	%%cr2,	%0":"=r"(cr2)::"memory");
 
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 
 	if(!(error_code & 0x01))
 		color_printk(RED,BLACK,"Page Not-Present,\t");
@@ -293,62 +264,52 @@ void do_page_fault(unsigned long rsp,unsigned long error_code)
 }
 
 /*
-
+	16
 */
 
-void do_x87_FPU_error(unsigned long rsp,unsigned long error_code)
+void do_x87_FPU_error(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_x87_FPU_error(16),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_x87_FPU_error(16),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 
 /*
-
+	17
 */
 
-void do_alignment_check(unsigned long rsp,unsigned long error_code)
+void do_alignment_check(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_alignment_check(17),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_alignment_check(17),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 
 /*
-
+	18
 */
 
-void do_machine_check(unsigned long rsp,unsigned long error_code)
+void do_machine_check(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_machine_check(18),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_machine_check(18),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 
 /*
-
+	19
 */
 
-void do_SIMD_exception(unsigned long rsp,unsigned long error_code)
+void do_SIMD_exception(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_SIMD_exception(19),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_SIMD_exception(19),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 
 /*
-
+	20
 */
 
-void do_virtualization_exception(unsigned long rsp,unsigned long error_code)
+void do_virtualization_exception(struct pt_regs * regs,unsigned long error_code)
 {
-	unsigned long * p = NULL;
-	p = (unsigned long *)(rsp + 0x98);
-	color_printk(RED,BLACK,"do_virtualization_exception(20),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , rsp , *p);
+	color_printk(RED,BLACK,"do_virtualization_exception(20),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",error_code , regs->rsp , regs->rip);
 	while(1);
 }
 

@@ -4,6 +4,5 @@ sudo cp ./bootloader/loader.bin /media/
 sudo cp ./kernel/kernel.bin /media/
 sync
 sudo umount /media/
-# sudo bochs -f bochsconfig
 sudo bochs -f bochsrc
 

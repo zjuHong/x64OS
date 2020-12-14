@@ -72,7 +72,6 @@ ret_from_exception:
 ENTRY(ret_from_intr)
 	jmp	RESTORE_ALL	/*need rewrite*/
 
-
 ENTRY(divide_error)
 	pushq	$0
 	pushq	%rax
@@ -274,5 +273,3 @@ ENTRY(virtualization_exception)
 	leaq	do_virtualization_exception(%rip),	%rax
 	xchgq	%rax,	(%rsp)
 	jmp	error_code
-
-

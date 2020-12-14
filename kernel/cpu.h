@@ -12,21 +12,12 @@
 *
 *
 ***************************************************/
-#ifndef __INTERRUPT_H__
-#define __INTERRUPT_H__
-#include "linkage.h"
-#include "ptrace.h"
 
-/*
+#ifndef __CPU_H__
 
-*/
+#define __CPU_H__
 
-void init_interrupt();
 
-/*
-
-*/
-
-void do_IRQ(struct pt_regs * regs,unsigned long nr);
+#define NR_CPUS 8
 
 #endif

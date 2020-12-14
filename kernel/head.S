@@ -13,11 +13,11 @@
 *
 ***************************************************/
 
+#include "linkage.h"
+
 .section .text
 
-.globl _start
-
-_start:
+ENTRY(_start)
 
 	mov	$0x10,	%ax
 	mov	%ax,	%ds
@@ -63,7 +63,7 @@ entry64:
 	movq	%rax,	%es
 	movq	%rax,	%gs
 	movq	%rax,	%ss
-	movq	$0xffff800000007E00,	%rsp		/* rsp address */
+	movq	_stack_start(%rip),	%rsp		/* rsp address */
 
 setup_IDT:							
 	leaq	ignore_int(%rip),	%rdx
@@ -186,6 +186,11 @@ Loop:
 int_msg:
 	.asciz "Unknown interrupt or fault at RIP\n"
 
+ENTRY(_stack_start)
+	.quad	init_task_union + 32768
+
+
+
 //=======	init page
 .align 8
 
@@ -202,26 +207,26 @@ __PML4E:
 
 __PDPTE:
 	
-	.quad	0x103003
+	.quad	0x103007
 	.fill	511,8,0
 
 .org	0x3000
 
 __PDE:
 
-	.quad	0x000083	
-	.quad	0x200083
-	.quad	0x400083
-	.quad	0x600083
-	.quad	0x800083
-	.quad	0xe0000083		/*0x a00000*/
-	.quad	0xe0200083
-	.quad	0xe0400083
-	.quad	0xe0600083		/*0x1000000*/
-	.quad	0xe0800083
-	.quad	0xe0a00083
-	.quad	0xe0c00083
-	.quad	0xe0e00083
+	.quad	0x000087	
+	.quad	0x200087
+	.quad	0x400087
+	.quad	0x600087
+	.quad	0x800087
+	.quad	0xe0000087		/*0x a00000*/
+	.quad	0xe0200087
+	.quad	0xe0400087
+	.quad	0xe0600087		/*0x1000000*/
+	.quad	0xe0800087
+	.quad	0xe0a00087
+	.quad	0xe0c00087
+	.quad	0xe0e00087
 	.fill	499,8,0
 
 //=======	GDT_Table

@@ -18,16 +18,13 @@
 #include "gate.h"
 #include "trap.h"
 #include "memory.h"
+#include "task.h"
+#include "task.c"
 #include "interrupt.h"
 
 /*
 		static var 
 */
-
-extern char _text;
-extern char _etext;
-extern char _edata;
-extern char _end;
 
 struct Global_Memory_Descriptor memory_management_struct = {{0},0};
 
@@ -50,7 +47,7 @@ void Start_Kernel(void)
 
 	load_TR(8);
 
-	set_tss64(0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
+	set_tss64(_stack_start, _stack_start, _stack_start, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
 
 	sys_vector_init();
 
@@ -64,6 +61,9 @@ void Start_Kernel(void)
 
 	color_printk(RED,BLACK,"interrupt init \n");
 	init_interrupt();
+
+	color_printk(RED,BLACK,"task_init \n");
+	task_init();
 
 	while(1)
 		;
