@@ -96,9 +96,9 @@ setup_TSS64:
  addq %rcx, %rax
  addq $103, %rax
  leaq GDT_Table(%rip), %rdi
- movq %rax, 64(%rdi)
+ movq %rax, 80(%rdi)
  shrq $32, %rdx
- movq %rdx, 72(%rdi)
+ movq %rdx, 88(%rdi)
 
 
 
@@ -233,6 +233,8 @@ GDT_Table:
  .quad 0x0000000000000000
  .quad 0x0020980000000000
  .quad 0x0000920000000000
+ .quad 0x0000000000000000
+ .quad 0x0000000000000000
  .quad 0x0020f80000000000
  .quad 0x0000f20000000000
  .quad 0x00cf9a000000ffff
