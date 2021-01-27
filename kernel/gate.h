@@ -102,7 +102,7 @@ static inline void set_system_gate(unsigned int n,unsigned char ist,void * addr)
 
 */
 
-static inline void set_system_intr_gate(unsigned int n,unsigned char ist,void * addr)	//int3
+inline void set_system_intr_gate(unsigned int n,unsigned char ist,void * addr)	//int3
 {
 	_set_gate(IDT_Table + n , 0xEE , ist , addr);	//P,DPL=3,TYPE=E
 }

@@ -19,6 +19,7 @@
 #include "trap.h"
 #include "memory.h"
 #include "task.h"
+#include "task.c"
 #include "interrupt.h"
 
 /*
@@ -44,7 +45,7 @@ void Start_Kernel(void)
 	Pos.FB_addr = (int *)0xffff800000a00000;
 	Pos.FB_length = (Pos.XResolution * Pos.YResolution * 4 + PAGE_4K_SIZE - 1) & PAGE_4K_MASK;
 
-	load_TR(10);
+	load_TR(8);
 
 	set_tss64(_stack_start, _stack_start, _stack_start, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
 

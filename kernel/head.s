@@ -1,9 +1,8 @@
 # 1 "head.S"
 # 1 "<built-in>"
 # 1 "<command-line>"
-# 31 "<command-line>"
 # 1 "/usr/include/stdc-predef.h" 1 3 4
-# 32 "<command-line>" 2
+# 1 "<command-line>" 2
 # 1 "head.S"
 # 16 "head.S"
 # 1 "linkage.h" 1
@@ -96,9 +95,9 @@ setup_TSS64:
  addq %rcx, %rax
  addq $103, %rax
  leaq GDT_Table(%rip), %rdi
- movq %rax, 80(%rdi)
+ movq %rax, 64(%rdi)
  shrq $32, %rdx
- movq %rdx, 88(%rdi)
+ movq %rdx, 72(%rdi)
 
 
 
@@ -233,8 +232,6 @@ GDT_Table:
  .quad 0x0000000000000000
  .quad 0x0020980000000000
  .quad 0x0000920000000000
- .quad 0x0000000000000000
- .quad 0x0000000000000000
  .quad 0x0020f80000000000
  .quad 0x0000f20000000000
  .quad 0x00cf9a000000ffff
