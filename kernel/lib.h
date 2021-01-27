@@ -305,7 +305,7 @@ static inline int strncmp(char * FirstPart,char * SecondPart,long Count)
 
 */
 
-int strlen(char * String)
+static inline int strlen(char * String)
 {
 	register int __res;
 	__asm__	__volatile__	(	"cld	\n\t"
@@ -412,5 +412,20 @@ __asm__ __volatile__("cld;rep;insw;mfence;"::"d"(port),"D"(buffer),"c"(nr):"memo
 
 #define port_outsw(port,buffer,nr)	\
 __asm__ __volatile__("cld;rep;outsw;mfence;"::"d"(port),"S"(buffer),"c"(nr):"memory")
+
+static inline unsigned long rdmsr(unsigned long address)
+{
+	unsigned int tmp0 = 0;
+	unsigned int tmp1 = 0;
+	__asm__ __volatile__("rdmsr	\n\t":"=d"(tmp0),"=a"(tmp1):"c"(address):"memory");	
+	return (unsigned long)tmp0<<32 | tmp1;
+}
+
+static inline void wrmsr(unsigned long address,unsigned long value)
+{
+	__asm__ __volatile__("wrmsr	\n\t"::"d"(value >> 32),"a"(value & 0xffffffff),"c"(address):"memory");	
+}
+
+
 
 #endif

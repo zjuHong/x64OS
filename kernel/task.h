@@ -21,7 +21,6 @@
 #include "cpu.h"
 #include "lib.h"
 #include "ptrace.h"
-#include "gate.h"
 
 #define KERNEL_CS 	(0x08)
 #define	KERNEL_DS 	(0x10)
@@ -47,8 +46,6 @@ extern char _ebss;
 extern char _end;
 
 extern unsigned long _stack_start;
-
-extern void ret_from_intr();
 
 /*
 
@@ -226,6 +223,7 @@ static inline	struct task_struct * get_current()
 
 */
 
+
 #define switch_to(prev,next)			\
 do{							\
 	__asm__ __volatile__ (	"pushq	%%rbp	\n\t"	\
@@ -251,5 +249,29 @@ do{							\
 
 unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned long stack_start, unsigned long stack_size);
 void task_init();
+
+#define MAX_SYSTEM_CALL_NR 128
+
+typedef unsigned long (* system_call_t)(struct pt_regs * regs);
+
+unsigned long no_system_call(struct pt_regs * regs)
+{
+	color_printk(RED,BLACK,"no_system_call is calling,NR:%#04x\n",regs->rax);
+	return -1;
+}
+
+unsigned long sys_printf(struct pt_regs * regs)
+{
+	color_printk(BLACK,WHITE,(char *)regs->rdi);
+	return 1;
+}
+
+system_call_t system_call_table[MAX_SYSTEM_CALL_NR] = 
+{
+	[0] = no_system_call,
+	[1] = sys_printf,
+	[2 ... MAX_SYSTEM_CALL_NR-1] = no_system_call
+};
+
 
 #endif
