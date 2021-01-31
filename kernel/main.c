@@ -13,27 +13,30 @@
 *
 ***************************************************/
 
+#include "UEFI_boot_param_info.h"
 #include "lib.h"
 #include "printk.h"
+//1#include "spinlock.h"
 #include "gate.h"
 #include "trap.h"
 #include "memory.h"
+//#include "interrupt.h"
 #include "task.h"
-#include "interrupt.h"
 
 /*
 		static var 
 */
 
 struct Global_Memory_Descriptor memory_management_struct = {{0},0};
+struct KERNEL_BOOT_PARAMETER_INFORMATION *boot_para_info = (struct KERNEL_BOOT_PARAMETER_INFORMATION *)0xffff800000060000;
 
 void Start_Kernel(void)
 {
 	int *addr = (int *)0xffff800000a00000;
 	int i;
 
-	Pos.XResolution = 1440;
-	Pos.YResolution = 900;
+	Pos.XResolution = boot_para_info->Graphics_Info.HorizontalResolution;
+	Pos.YResolution = boot_para_info->Graphics_Info.VerticalResolution;
 
 	Pos.XPosition = 0;
 	Pos.YPosition = 0;
@@ -41,9 +44,11 @@ void Start_Kernel(void)
 	Pos.XCharSize = 8;
 	Pos.YCharSize = 16;
 
-	Pos.FB_addr = (int *)0xffff800000a00000;
-	Pos.FB_length = (Pos.XResolution * Pos.YResolution * 4 + PAGE_4K_SIZE - 1) & PAGE_4K_MASK;
-
+	Pos.FB_addr = (int *)0xffff800003000000;
+	Pos.FB_length = boot_para_info->Graphics_Info.FrameBufferSize;
+	
+	//spin_init(&Pos.printk_lock);
+	
 	load_TR(10);
 
 	set_tss64(_stack_start, _stack_start, _stack_start, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);

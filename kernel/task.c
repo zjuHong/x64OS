@@ -26,6 +26,25 @@ extern void ret_system_call(void);
 extern void system_call(void);
 
 
+unsigned long no_system_call(struct pt_regs * regs)
+{
+	color_printk(RED,BLACK,"no_system_call is calling,NR:%#04x\n",regs->rax);
+	return -1;
+}
+
+unsigned long sys_printf(struct pt_regs * regs)
+{
+	color_printk(BLACK,WHITE,(char *)regs->rdi);
+	return 1;
+}
+
+system_call_t system_call_table[MAX_SYSTEM_CALL_NR] = 
+{
+	[0] = no_system_call,
+	[1] = sys_printf,
+	[2 ... MAX_SYSTEM_CALL_NR-1] = no_system_call
+};
+
 void user_level_function()
 {
 	long ret = 0;

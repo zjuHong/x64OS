@@ -19,38 +19,41 @@
 
 ENTRY(_start)
 
-	mov	$0x10,	%ax
-	mov	%ax,	%ds
-	mov	%ax,	%es
-	mov	%ax,	%fs
-	mov	%ax,	%ss
-	mov	$0x7E00,	%esp
+    mov    %ss,    %ax
+    mov    %ax,    %ds
+    mov    %ax,    %es
+    mov    %ax,    %fs
+    mov    %ax,    %ss
+    mov    $0x7E00,    %esp
 
-//=======	load GDTR
+    movq    $0x101000,    %rax
+    movq    %rax,        %cr3
 
-	lgdt	GDT_POINTER(%rip)
+//=======    load GDTR
 
-//=======	load	IDTR
+    lgdt    GDT_POINTER(%rip)
 
-	lidt	IDT_POINTER(%rip)
+//=======    load    IDTR
 
-	mov	$0x10,	%ax
-	mov	%ax,	%ds
-	mov	%ax,	%es
-	mov	%ax,	%fs
-	mov	%ax,	%gs
-	mov	%ax,	%ss
+    lidt    IDT_POINTER(%rip)
 
-	movq	$0x7E00,	%rsp
+    mov    $0x10,    %ax
+    mov    %ax,    %ds
+    mov    %ax,    %es
+    mov    %ax,    %fs
+    mov    %ax,    %gs
+    mov    %ax,    %ss
 
-//=======	load	cr3
+    movq    _stack_start(%rip),    %rsp
 
-	movq	$0x101000,	%rax
-	movq	%rax,		%cr3
-	movq	switch_seg(%rip),	%rax
-	pushq	$0x08
-	pushq	%rax
-	lretq
+//=======    load    cr3
+
+    movq    $0x101000,    %rax
+    movq    %rax,        %cr3
+    movq    switch_seg(%rip),    %rax
+    pushq    $0x08
+    pushq    %rax
+    lretq
 
 //=======	64-bit mode code
 
@@ -191,43 +194,43 @@ ENTRY(_stack_start)
 
 
 
-//=======	init page
+//=======    init page
 .align 8
 
-.org	0x1000
+.org    0x1000
 
 __PML4E:
 
-	.quad	0x102007
-	.fill	255,8,0
-	.quad	0x102007
-	.fill	255,8,0
+    .quad    0x102007
+    .fill    255,8,0
+    .quad    0x102007
+    .fill    255,8,0
 
-.org	0x2000
+.org    0x2000
 
 __PDPTE:
-	
-	.quad	0x103007	/* 0x103003 */
-	.fill	511,8,0
 
-.org	0x3000
+    .quad    0x103007    /* 0x103003 */
+    .fill    511,8,0
+
+.org    0x3000
 
 __PDE:
 
-	.quad	0x000087	
-	.quad	0x200087
-	.quad	0x400087
-	.quad	0x600087
-	.quad	0x800087		/* 0x800083 */
-	.quad	0xe0000087		/*0x a00000*/
-	.quad	0xe0200087
-	.quad	0xe0400087
-	.quad	0xe0600087		/*0x1000000*/
-	.quad	0xe0800087
-	.quad	0xe0a00087
-	.quad	0xe0c00087
-	.quad	0xe0e00087
-	.fill	499,8,0
+    .quad    0x000087    
+    .quad    0x200087
+    .quad    0x400087
+    .quad    0x600087
+    .quad    0x800087
+    .quad    0xa00087        /*0x a00000*/
+    .quad    0xc00087
+    .quad    0xe00087
+    .quad    0x1000087
+    .quad    0x1200087        /*0x1000000*/
+    .quad    0x1400087
+    .quad    0x1600087
+    .quad    0x1800087
+    .fill    499,8,0
 
 //=======	GDT_Table
 
