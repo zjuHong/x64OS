@@ -1,22 +1,52 @@
-/***************************************************
-*		版权声明
-*
-*	本操作系统名为：MINE
-*	该操作系统未经授权不得以盈利或非盈利为目的进行开发，
-*	只允许个人学习以及公开交流使用
-*
-*	代码最终所有权及解释权归田宇所有；
-*
-*	本模块作者：	田宇
-*	EMail:		345538255@qq.com
-*
-*
-***************************************************/
-
 #include <stdarg.h>
 #include "printk.h"
 #include "lib.h"
 #include "linkage.h"
+#include "memory.h"
+#include "UEFI_boot_param_info.h"
+
+
+/*
+
+*/
+void frame_buffer_init(void)
+{
+	//re init frame buffer;
+	unsigned long i;
+	unsigned long * tmp;
+	unsigned long * tmp1;
+	unsigned int * FB_addr = (unsigned int *)Phy_To_Virt(boot_para_info->Graphics_Info.FrameBufferBase);
+
+	tmp = Phy_To_Virt((unsigned long *)((unsigned long)Get_gdt() & (~ 0xfffUL)) + (((unsigned long)FB_addr >> PAGE_GDT_SHIFT) & 0x1ff));
+	if (*tmp == 0)
+	{
+		unsigned long * virtual = kmalloc(PAGE_4K_SIZE,0);
+		memset(virtual,0,PAGE_4K_SIZE);
+		set_mpl4t(tmp,mk_mpl4t(Virt_To_Phy(virtual),PAGE_KERNEL_GDT));
+	}
+
+	tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + (((unsigned long)FB_addr >> PAGE_1G_SHIFT) & 0x1ff));
+	if(*tmp == 0)
+	{
+		unsigned long * virtual = kmalloc(PAGE_4K_SIZE,0);
+		memset(virtual,0,PAGE_4K_SIZE);
+		set_pdpt(tmp,mk_pdpt(Virt_To_Phy(virtual),PAGE_KERNEL_Dir));
+	}
+	
+	for(i = 0;i < Pos.FB_length;i += PAGE_2M_SIZE)
+	{
+		tmp1 = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + (((unsigned long)((unsigned long)FB_addr + i) >> PAGE_2M_SHIFT) & 0x1ff));
+	
+		unsigned long phy = boot_para_info->Graphics_Info.FrameBufferBase + i;
+		set_pdt(tmp1,mk_pdt(phy,PAGE_KERNEL_Page | PAGE_PWT | PAGE_PCD));
+	}
+
+//	FB_addr = (unsigned int *)0xffff800003000000;
+
+	Pos.FB_addr = (unsigned int *)Phy_To_Virt(boot_para_info->Graphics_Info.FrameBufferBase);
+
+	flush_tlb();
+}
 
 
 /*

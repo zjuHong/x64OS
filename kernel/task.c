@@ -1,18 +1,3 @@
-/***************************************************
-*		版权声明
-*
-*	本操作系统名为：MINE
-*	该操作系统未经授权不得以盈利或非盈利为目的进行开发，
-*	只允许个人学习以及公开交流使用
-*
-*	代码最终所有权及解释权归田宇所有；
-*
-*	本模块作者：	田宇
-*	EMail:		345538255@qq.com
-*
-*
-***************************************************/
-
 #include "task.h"
 #include "gate.h"
 #include "ptrace.h"
@@ -106,7 +91,8 @@ unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned
 	
 	color_printk(WHITE,BLACK,"alloc_pages,bitmap:%#018lx\n",*memory_management_struct.bits_map);
 
-	p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped | PG_Active | PG_Kernel);
+	//p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped | PG_Active | PG_Kernel);
+	p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped | PG_Kernel);
 
 	color_printk(WHITE,BLACK,"alloc_pages,bitmap:%#018lx\n",*memory_management_struct.bits_map);
 

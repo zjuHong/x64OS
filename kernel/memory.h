@@ -1,18 +1,3 @@
-/***************************************************
-*		版权声明
-*
-*	本操作系统名为：MINE
-*	该操作系统未经授权不得以盈利或非盈利为目的进行开发，
-*	只允许个人学习以及公开交流使用
-*
-*	代码最终所有权及解释权归田宇所有；
-*
-*	本模块作者：	田宇
-*	EMail:		345538255@qq.com
-*
-*
-***************************************************/
-
 #ifndef __MEMORY_H__
 #define __MEMORY_H__
 
@@ -48,41 +33,40 @@
 #define Virt_To_2M_Page(kaddr)	(memory_management_struct.pages_struct + (Virt_To_Phy(kaddr) >> PAGE_2M_SHIFT))
 #define Phy_to_2M_Page(kaddr)	(memory_management_struct.pages_struct + ((unsigned long)(kaddr) >> PAGE_2M_SHIFT))
 
-
 ////page table attribute
 
 //	bit 63	Execution Disable:
-#define PAGE_XD		(unsigned long)0x1000000000000000
+#define PAGE_XD		(1UL << 63)
 
 //	bit 12	Page Attribute Table
-#define	PAGE_PAT	(unsigned long)0x1000
+#define	PAGE_PAT	(1UL << 12)
 
 //	bit 8	Global Page:1,global;0,part
-#define	PAGE_Global	(unsigned long)0x0100
+#define	PAGE_Global	(1UL << 8)
 
 //	bit 7	Page Size:1,big page;0,small page;
-#define	PAGE_PS		(unsigned long)0x0080
+#define	PAGE_PS		(1UL << 7)
 
 //	bit 6	Dirty:1,dirty;0,clean;
-#define	PAGE_Dirty	(unsigned long)0x0040
+#define	PAGE_Dirty	(1UL << 6)
 
 //	bit 5	Accessed:1,visited;0,unvisited;
-#define	PAGE_Accessed	(unsigned long)0x0020
+#define	PAGE_Accessed	(1UL << 5)
 
 //	bit 4	Page Level Cache Disable
-#define PAGE_PCD	(unsigned long)0x0010
+#define PAGE_PCD	(1UL << 4)
 
 //	bit 3	Page Level Write Through
-#define PAGE_PWT	(unsigned long)0x0008
+#define PAGE_PWT	(1UL << 3)
 
 //	bit 2	User Supervisor:1,user and supervisor;0,supervisor;
-#define	PAGE_U_S	(unsigned long)0x0004
+#define	PAGE_U_S	(1UL << 2)
 
 //	bit 1	Read Write:1,read and write;0,read;
-#define	PAGE_R_W	(unsigned long)0x0002
+#define	PAGE_R_W	(1UL << 1)
 
 //	bit 0	Present:1,present;0,no present;
-#define	PAGE_Present	(unsigned long)0x0001
+#define	PAGE_Present	(1UL << 0)
 
 //1,0
 #define PAGE_KERNEL_GDT		(PAGE_R_W | PAGE_Present)
@@ -107,21 +91,17 @@ typedef struct {unsigned long pml4t;} pml4t_t;
 #define	mk_mpl4t(addr,attr)	((unsigned long)(addr) | (unsigned long)(attr))
 #define set_mpl4t(mpl4tptr,mpl4tval)	(*(mpl4tptr) = (mpl4tval))
 
-
 typedef struct {unsigned long pdpt;} pdpt_t;
 #define mk_pdpt(addr,attr)	((unsigned long)(addr) | (unsigned long)(attr))
 #define set_pdpt(pdptptr,pdptval)	(*(pdptptr) = (pdptval))
-
 
 typedef struct {unsigned long pdt;} pdt_t;
 #define mk_pdt(addr,attr)	((unsigned long)(addr) | (unsigned long)(attr))
 #define set_pdt(pdtptr,pdtval)		(*(pdtptr) = (pdtval))
 
-
 typedef struct {unsigned long pt;} pt_t;
 #define mk_pt(addr,attr)	((unsigned long)(addr) | (unsigned long)(attr))
 #define set_pt(ptptr,ptval)		(*(ptptr) = (ptval))
-
 
 unsigned long * Global_CR3 = NULL;
 
@@ -131,7 +111,6 @@ struct E820
 	unsigned long length;
 	unsigned int	type;
 }__attribute__((packed));
-
 
 /*
 
@@ -154,7 +133,7 @@ struct Global_Memory_Descriptor
 	unsigned long	zones_size;
 	unsigned long 	zones_length;
 
-	unsigned long 	start_code , end_code , end_data , end_brk;
+	unsigned long 	start_code , end_code , end_data , end_rodata , start_brk, end_brk;
 
 	unsigned long	end_of_struct;	
 };
@@ -170,37 +149,23 @@ struct Global_Memory_Descriptor
 //
 #define ZONE_UNMAPED	(1 << 2)
 
-////struct page attribute (alloc_pages flags)
+////struct page attribute
 
-//
+//	mapped=1 or un-mapped=0 
 #define PG_PTable_Maped	(1 << 0)
 
-//
+//	init-code=1 or normal-code/data=0
 #define PG_Kernel_Init	(1 << 1)
 
-//
-#define PG_Referenced	(1 << 2)
+//	device=1 or memory=0
+#define PG_Device	(1 << 2)
 
-//
-#define PG_Dirty	(1 << 3)
+//	kernel=1 or user=0
+#define PG_Kernel	(1 << 3)
 
-//
-#define PG_Active	(1 << 4)
+//	shared=1 or single-use=0 
+#define PG_Shared	(1 << 4)
 
-//
-#define PG_Up_To_Date	(1 << 5)
-
-//
-#define PG_Device	(1 << 6)
-
-//
-#define PG_Kernel	(1 << 7)
-
-//
-#define PG_K_Share_To_U	(1 << 8)
-
-//
-#define PG_Slab		(1 << 9)
 
 struct Page
 {
@@ -212,7 +177,6 @@ struct Page
 	
 	unsigned long	age;
 };
-
 
 //// each zone index
 
@@ -244,16 +208,65 @@ struct Zone
 	unsigned long	total_pages_link;
 };
 
-
 extern struct Global_Memory_Descriptor memory_management_struct;
 
-unsigned long page_init(struct Page * page,unsigned long flags);
+/*
 
-unsigned long page_clean(struct Page * page);
+*/
 
-void init_memory();
+struct Slab
+{
+	struct List list;
+	struct Page * page;
 
-struct Page * alloc_pages(int zone_select,int number,unsigned long page_flags);
+	unsigned long using_count;
+	unsigned long free_count;
+
+	void * Vaddress;
+
+	unsigned long color_length;
+	unsigned long color_count;
+
+	unsigned long * color_map;
+};
+
+struct Slab_cache
+{
+	unsigned long	size;
+	unsigned long	total_using;
+	unsigned long	total_free;
+	struct Slab *	cache_pool;
+	struct Slab *	cache_dma_pool;
+	void *(* constructor)(void * Vaddress,unsigned long arg);
+	void *(* destructor)(void * Vaddress,unsigned long arg);
+};
+
+/*
+	kmalloc`s struct
+*/
+
+struct Slab_cache kmalloc_cache_size[16] = 
+{
+	{32	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{64	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{128	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{256	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{512	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{1024	,0	,0	,NULL	,NULL	,NULL	,NULL},			//1KB
+	{2048	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{4096	,0	,0	,NULL	,NULL	,NULL	,NULL},			//4KB
+	{8192	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{16384	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{32768	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{65536	,0	,0	,NULL	,NULL	,NULL	,NULL},			//64KB
+	{131072	,0	,0	,NULL	,NULL	,NULL	,NULL},			//128KB
+	{262144	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{524288	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{1048576,0	,0	,NULL	,NULL	,NULL	,NULL},			//1MB
+};
+
+#define SIZEOF_LONG_ALIGN(size) ((size + sizeof(long) - 1) & ~(sizeof(long) - 1) )
+#define SIZEOF_INT_ALIGN(size) ((size + sizeof(int) - 1) & ~(sizeof(int) - 1) )
 
 /*
 
@@ -282,7 +295,7 @@ do								\
 
 */
 
-static inline unsigned long * Get_gdt()
+inline unsigned long * Get_gdt()
 {
 	unsigned long * tmp;
 	__asm__ __volatile__	(
@@ -294,5 +307,88 @@ static inline unsigned long * Get_gdt()
 	return tmp;
 }
 
+/*
+
+*/
+
+unsigned long page_init(struct Page * page,unsigned long flags);
+
+unsigned long page_clean(struct Page * page);
+
+/*
+
+*/
+
+unsigned long get_page_attribute(struct Page * page);
+
+unsigned long set_page_attribute(struct Page * page,unsigned long flags);
+
+/*
+
+*/
+
+void init_memory();
+
+/*
+
+*/
+
+struct Page * alloc_pages(int zone_select,int number,unsigned long page_flags);
+
+void free_pages(struct Page * page,int number);
+
+/*
+	return virtual kernel address
+*/
+
+void * kmalloc(unsigned long size,unsigned long flags);
+
+/*
+
+*/
+
+struct Slab * kmalloc_create(unsigned long size);
+
+/*
+
+*/
+
+unsigned long kfree(void * address);
+
+/*
+
+*/
+
+struct Slab_cache * slab_create(unsigned long size,void *(* constructor)(void * Vaddress,unsigned long arg),void *(* destructor)(void * Vaddress,unsigned long arg),unsigned long arg);
+
+/*
+
+*/
+
+unsigned long slab_destroy(struct Slab_cache * slab_cache);
+
+/*
+
+*/
+
+void * slab_malloc(struct Slab_cache * slab_cache,unsigned long arg);
+
+/*
+
+*/
+
+unsigned long slab_free(struct Slab_cache * slab_cache,void * address,unsigned long arg);
+
+/*
+
+*/
+
+unsigned long slab_init();
+
+/*
+
+*/
+
+void pagetable_init(void);
 
 #endif
