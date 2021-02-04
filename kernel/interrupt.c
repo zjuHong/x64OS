@@ -154,14 +154,55 @@ void init_interrupt()
 
 */
 
-void do_IRQ(struct pt_regs * regs,unsigned long nr)	//regs,nr
+int register_irq(unsigned long irq,
+		void * arg,
+		void (*handler)(unsigned long nr, unsigned long parameter, struct pt_regs * regs),
+		unsigned long parameter,
+		hw_int_controller * controller,
+		char * irq_name)
+{	
+	irq_desc_T * p = &interrupt_desc[irq - 32];
+	
+	p->controller = controller;
+	p->irq_name = irq_name;
+	p->parameter = parameter;
+	p->flags = 0;
+	p->handler = handler;
+
+	return 1;
+}
+
+/*
+
+*/
+
+int unregister_irq(unsigned long irq)
 {
-	unsigned char x;
-	color_printk(RED,BLACK,"do_IRQ:%#018lx\t",nr);
-	x = io_in8(0x60);
-	color_printk(RED,BLACK,"key code:%#018lx\t",x);
-	io_out8(0x20,0x20);
-	color_printk(RED,BLACK,"regs:%#018lx\t<RIP:%#018lx\tRSP:%#018lx>\n",regs,regs->rip,regs->rsp);
+	irq_desc_T * p = &interrupt_desc[irq - 32];
+
+	p->controller = NULL;
+	p->irq_name = NULL;
+	p->parameter = NULL;
+	p->flags = 0;
+	p->handler = NULL;
+
+	return 1; 
+}
+
+
+/*
+
+*/
+
+void do_IRQ(struct pt_regs * regs,unsigned long nr)	//regs:rsp,nr
+{
+	irq_desc_T * irq = &interrupt_desc[nr - 32];
+
+	if(irq->handler != NULL)
+		irq->handler(nr,irq->parameter,regs);
+
+	if(irq->controller != NULL && irq->controller->ack != NULL)
+		irq->controller->ack(nr);
 }
 
 
