@@ -17,6 +17,7 @@
 
 #include "keyboard.h"
 #include "mouse.h"
+#include "disk.h"
 
 /*
 	static var 
@@ -27,6 +28,9 @@ struct KERNEL_BOOT_PARAMETER_INFORMATION *boot_para_info = (struct KERNEL_BOOT_P
 
 void Start_Kernel(void)
 {
+	unsigned int i;
+	char buf[512];
+
 	memset((void*)&_bss,0,(unsigned long)&_end-(unsigned long)&_bss);
 
 	Pos.XResolution = boot_para_info->Graphics_Info.HorizontalResolution;
@@ -84,6 +88,24 @@ void Start_Kernel(void)
 	color_printk(RED,BLACK,"mouse init \n");
 	mouse_init();
 
+	color_printk(RED,BLACK,"disk init \n");
+	disk_init();
+
+	color_printk(PURPLE,BLACK,"disk write:\n");
+	memset(buf,0x44,512);
+	IDE_device_operation.transfer(ATA_WRITE_CMD,0x08,1,(unsigned char *)buf);
+
+	color_printk(PURPLE,BLACK,"disk write end\n");
+
+	color_printk(PURPLE,BLACK,"disk read:\n");
+	memset(buf,0x00,512);
+	IDE_device_operation.transfer(ATA_READ_CMD,0x08,1,(unsigned char *)buf);
+	
+	for(i = 0 ;i < 512 ; i++)
+		color_printk(BLACK,WHITE,"%02x",buf[i]);
+	color_printk(PURPLE,BLACK,"\ndisk read end\n");
+
+
 	//	color_printk(RED,BLACK,"task_init \n");
 	//	task_init();
 
@@ -97,8 +119,4 @@ void Start_Kernel(void)
 		if (p_mouse->count)
 			analysis_mousecode();
 	}
-
-	//color_printk(RED,BLACK,"task_init \n");
-	//task_init();
-
 }
