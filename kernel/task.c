@@ -189,14 +189,10 @@ int kernel_thread(unsigned long (* fn)(unsigned long), unsigned long arg, unsign
 	return do_fork(&regs,flags,0,0);
 }
 
-
-
-void __switch_to(struct task_struct *prev,struct task_struct *next)
+inline void __switch_to(struct task_struct *prev,struct task_struct *next)
 {
-
+//	init_tss[SMP_cpu_id()].rsp0 = next->thread->rsp0;
 	init_tss[0].rsp0 = next->thread->rsp0;
-
-	set_tss64(init_tss[0].rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
 
 	__asm__ __volatile__("movq	%%fs,	%0 \n\t":"=a"(prev->thread->fs));
 	__asm__ __volatile__("movq	%%gs,	%0 \n\t":"=a"(prev->thread->gs));
@@ -204,8 +200,7 @@ void __switch_to(struct task_struct *prev,struct task_struct *next)
 	__asm__ __volatile__("movq	%0,	%%fs \n\t"::"a"(next->thread->fs));
 	__asm__ __volatile__("movq	%0,	%%gs \n\t"::"a"(next->thread->gs));
 
-	color_printk(WHITE,BLACK,"prev->thread->rsp0:%#018lx\n",prev->thread->rsp0);
-	color_printk(WHITE,BLACK,"next->thread->rsp0:%#018lx\n",next->thread->rsp0);
+	wrmsr(0x175,next->thread->rsp0);
 }
 
 /*
@@ -214,9 +209,27 @@ void __switch_to(struct task_struct *prev,struct task_struct *next)
 
 void task_init()
 {
-	struct task_struct *p = NULL;
+	unsigned long * tmp = NULL;
+	unsigned long * vaddr = NULL;
+	int i = 0;
 
-	init_mm.pgd = (pml4t_t *)Global_CR3;
+	vaddr = (unsigned long *)Phy_To_Virt((unsigned long)Get_gdt() & (~ 0xfffUL));
+	
+	*vaddr = 0UL;
+
+	for(i = 256;i<512;i++)
+	{
+		tmp = vaddr + i;
+
+		if(*tmp == 0)
+		{			
+			unsigned long * virtual = kmalloc(PAGE_4K_SIZE,0);
+			memset(virtual,0,PAGE_4K_SIZE);
+			set_mpl4t(tmp,mk_mpl4t(Virt_To_Phy(virtual),PAGE_KERNEL_GDT));
+		}
+	}
+
+	init_mm.pgd = (pml4t_t *)Get_gdt();
 
 	init_mm.start_code = memory_management_struct.start_code;
 	init_mm.end_code = memory_management_struct.end_code;
@@ -225,10 +238,13 @@ void task_init()
 	init_mm.end_data = memory_management_struct.end_data;
 
 	init_mm.start_rodata = (unsigned long)&_rodata; 
-	init_mm.end_rodata = (unsigned long)&_erodata;
+	init_mm.end_rodata = memory_management_struct.end_rodata;
 
-	init_mm.start_brk = 0;
-	init_mm.end_brk = memory_management_struct.end_brk;
+	init_mm.start_bss = (unsigned long)&_bss;
+	init_mm.end_bss = (unsigned long)&_ebss;
+
+	init_mm.start_brk = memory_management_struct.start_brk;
+	init_mm.end_brk = current->addr_limit;
 
 	init_mm.start_stack = _stack_start;
 	
@@ -237,18 +253,16 @@ void task_init()
 	wrmsr(0x176,(unsigned long)system_call);
 	
 //	init_thread,init_tss
-	set_tss64(init_thread.rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
+//	set_tss64(TSS64_Table,init_thread.rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
 
+	//init_tss[SMP_cpu_id()].rsp0 = init_thread.rsp0;
 	init_tss[0].rsp0 = init_thread.rsp0;
 
 	list_init(&init_task_union.task.list);
 
-	kernel_thread(init,10,CLONE_FS | CLONE_FILES | CLONE_SIGNAL);
+	kernel_thread(init,10,CLONE_FS | CLONE_SIGNAL);
 
+	init_task_union.task.preempt_count = 0;
 	init_task_union.task.state = TASK_RUNNING;
-
-	p = container_of(list_next(&current->list),struct task_struct,list);
-
-	switch_to(current,p);
+	init_task_union.task.cpu_id = 0;
 }
-

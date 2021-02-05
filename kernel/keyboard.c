@@ -1,6 +1,7 @@
 #include "keyboard.h"
 #include "lib.h"
 #include "interrupt.h"
+#include "APIC.h"
 #include "memory.h"
 #include "printk.h"
 
@@ -8,7 +9,7 @@
 
 */
 
-static struct keyboard_inputbuffer * p_kb = NULL;
+struct keyboard_inputbuffer * p_kb = NULL;
 static int shift_l,shift_r,ctrl_l,ctrl_r,alt_l,alt_r;
 
 void keyboard_handler(unsigned long nr, unsigned long parameter, struct pt_regs * regs)
@@ -16,14 +17,13 @@ void keyboard_handler(unsigned long nr, unsigned long parameter, struct pt_regs 
 	unsigned char x;
 	x = io_in8(0x60);
 	color_printk(WHITE,BLACK,"(K:%02x)",x);
-	io_out8(0x20, 0x20);
 
 	if(p_kb->p_head == p_kb->buf + KB_BUF_SIZE)
 		p_kb->p_head = p_kb->buf;
 
 	*p_kb->p_head = x;
 	p_kb->count++;
-	p_kb->p_head ++;	
+	p_kb->p_head ++;
 }
 
 /*
@@ -178,11 +178,11 @@ void analysis_keycode()
 
 hw_int_controller keyboard_int_controller = 
 {
-	.enable = NULL,//IOAPIC_enable,
-	.disable = NULL,//IOAPIC_disable,
-	.install = NULL,//IOAPIC_install,
-	.uninstall = NULL,//IOAPIC_uninstall,
-	.ack = NULL,//IOAPIC_edge_ack,
+	.enable = IOAPIC_enable,
+	.disable = IOAPIC_disable,
+	.install = IOAPIC_install,
+	.uninstall = IOAPIC_uninstall,
+	.ack = IOAPIC_edge_ack,
 };
 
 
@@ -193,8 +193,7 @@ hw_int_controller keyboard_int_controller =
 
 void keyboard_init()
 {
-
-	//struct IO_APIC_RET_entry entry;
+	struct IO_APIC_RET_entry entry;
 	unsigned long i,j;
 
 	p_kb = (struct keyboard_inputbuffer *)kmalloc(sizeof(struct keyboard_inputbuffer),0);
@@ -204,7 +203,7 @@ void keyboard_init()
 	p_kb->count  = 0;
 	memset(p_kb->buf,0,KB_BUF_SIZE);
 
-/*	entry.vector = 0x21;
+	entry.vector = 0x21;
 	entry.deliver_mode = APIC_ICR_IOAPIC_Fixed ;
 	entry.dest_mode = ICR_IOAPIC_DELV_PHYSICAL;
 	entry.deliver_status = APIC_ICR_IOAPIC_Idle;
@@ -217,7 +216,7 @@ void keyboard_init()
 	entry.destination.physical.reserved1 = 0;
 	entry.destination.physical.phy_dest = 0;
 	entry.destination.physical.reserved2 = 0;
-*/
+
 	wait_KB_write();
 	io_out8(PORT_KB_CMD,KBCMD_WRITE_CMD);
 	wait_KB_write();
@@ -227,15 +226,7 @@ void keyboard_init()
 		for(j = 0;j<1000;j++)
 			nop();
 	
-	shift_l = 0;
-	shift_r = 0;
-	ctrl_l  = 0;
-	ctrl_r  = 0;
-	alt_l   = 0;
-	alt_r   = 0;
-
-	register_irq(0x21, NULL, &keyboard_handler, (unsigned long)p_kb, &keyboard_int_controller, "ps/2 keyboard");
-
+	register_irq(0x21, &entry , &keyboard_handler, (unsigned long)p_kb, &keyboard_int_controller, "PS/2 KeyBoard");
 }
 
 /*

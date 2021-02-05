@@ -53,8 +53,9 @@ struct mm_struct
 	unsigned long start_code,end_code;
 	unsigned long start_data,end_data;
 	unsigned long start_rodata,end_rodata;
+	unsigned long start_bss,end_bss;
 	unsigned long start_brk,end_brk;
-	unsigned long start_stack;	
+	unsigned long start_stack;
 };
 
 /*
@@ -84,24 +85,27 @@ struct thread_struct
 
 struct task_struct
 {
-	struct List list;
 	volatile long state;
 	unsigned long flags;
 	long preempt_count;
+	long signal;
+	long cpu_id;		//CPU ID
 
 	struct mm_struct *mm;
 	struct thread_struct *thread;
 
+	struct List list;
+
 	unsigned long addr_limit;	/*0x0000,0000,0000,0000 - 0x0000,7fff,ffff,ffff user*/
 					/*0xffff,8000,0000,0000 - 0xffff,ffff,ffff,ffff kernel*/
-
 	long pid;
-
-	long counter;
-
-	long signal;
-
 	long priority;
+	long vrun_time;
+
+	long exit_code;
+
+	struct task_struct *next;
+	struct task_struct *parent;
 };
 
 union task_union
@@ -117,16 +121,23 @@ struct thread_struct init_thread;
 {			\
 	.state = TASK_UNINTERRUPTIBLE,		\
 	.flags = PF_KTHREAD,		\
+	.preempt_count = 0,		\
+	.signal = 0,		\
+	.cpu_id = 0,		\
 	.mm = &init_mm,			\
 	.thread = &init_thread,		\
-	.addr_limit = 0xffff800000000000,	\
+	.addr_limit = 0xffffffffffffffff,	\
 	.pid = 0,			\
-	.counter = 1,		\
-	.signal = 0,		\
-	.priority = 0		\
+	.priority = 2,		\
+	.vrun_time = 0,		\
+	.exit_code = 0,		\
+	.next = &tsk,		\
+	.parent = &tsk,		\
 }
 
+
 union task_union init_task_union __attribute__((__section__ (".data.init_task"))) = {INIT_TASK(init_task_union.task)};
+
 
 struct task_struct *init_task[NR_CPUS] = {&init_task_union.task,0};
 

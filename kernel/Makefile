@@ -7,38 +7,54 @@ PIC := APIC
 all: system
 	objcopy -I elf64-x86-64 -S -R ".eh_frame" -R ".comment" -O binary system kernel.bin
 
-system:	head.o entry.o main.o printk.o trap.o memory.o interrupt.o task.o keyboard.o
-	ld -b elf64-x86-64 -z muldefs -o system head.o entry.o main.o printk.o trap.o memory.o interrupt.o task.o keyboard.o -T Kernel.lds 
+system:	head.o entry.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o cpu.o keyboard.o mouse.o SMP.o
+	ld -b elf64-x86-64 -z muldefs -o system head.o entry.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o cpu.o keyboard.o mouse.o SMP.o -T Kernel.lds 
 
 head.o:	head.S
-	gcc -E head.S > head.s
+	gcc-4.8 -E head.S > head.s
 	as $(ASFLAGS) -o head.o head.s
 
 entry.o: entry.S
-	gcc -E entry.S > entry.s
+	gcc-4.8 -E entry.S > entry.s
 	as $(ASFLAGS) -o entry.o entry.s
 	
 main.o:	main.c
-	gcc  $(CFLAGS) -c main.c
+	gcc-4.8  $(CFLAGS) -c main.c -D$(PIC) 
 	
 printk.o: printk.c
-	gcc  $(CFLAGS) -c printk.c
+	gcc-4.8  $(CFLAGS) -c printk.c
 
 trap.o: trap.c
-	gcc  $(CFLAGS) -c trap.c
+	gcc-4.8  $(CFLAGS) -c trap.c
 
 memory.o: memory.c
-	gcc  $(CFLAGS) -c memory.c
+	gcc-4.8  $(CFLAGS) -c memory.c
 
 interrupt.o: interrupt.c
-	gcc  $(CFLAGS) -c interrupt.c
+	gcc-4.8  $(CFLAGS) -c interrupt.c
 
+ifeq ($(PIC),APIC)
+PIC.o: APIC.c
+	gcc-4.8  $(CFLAGS) -c APIC.c -o PIC.o
+else
+PIC.o: 8259A.c
+	gcc-4.8  $(CFLAGS) -c 8259A.c -o PIC.o
+endif
+	
 task.o: task.c
-	gcc  $(CFLAGS) -c task.c
+	gcc-4.8  $(CFLAGS) -c task.c	
+	
+cpu.o: cpu.c
+	gcc-4.8  $(CFLAGS) -c cpu.c
 
 keyboard.o: keyboard.c
-	gcc  $(CFLAGS) -c keyboard.c
+	gcc-4.8  $(CFLAGS) -c keyboard.c
 
+mouse.o: mouse.c
+	gcc-4.8  $(CFLAGS) -c mouse.c
+
+SMP.o: SMP.c
+	gcc-4.8  $(CFLAGS) -c SMP.c
+	
 clean:
 	rm -rf *.o *.s~ *.s *.S~ *.c~ *.h~ system  Makefile~ Kernel.lds~ kernel.bin 
-

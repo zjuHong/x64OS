@@ -1,6 +1,31 @@
-#include "memory.h"
 #include "UEFI_boot_param_info.h"
+#include "memory.h"
+#include "printk.h"
 #include "lib.h"
+#include "task.h"
+
+
+struct Global_Memory_Descriptor memory_management_struct = {{0},0};
+
+struct Slab_cache kmalloc_cache_size[16] = 
+{
+	{32	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{64	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{128	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{256	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{512	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{1024	,0	,0	,NULL	,NULL	,NULL	,NULL},			//1KB
+	{2048	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{4096	,0	,0	,NULL	,NULL	,NULL	,NULL},			//4KB
+	{8192	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{16384	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{32768	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{65536	,0	,0	,NULL	,NULL	,NULL	,NULL},			//64KB
+	{131072	,0	,0	,NULL	,NULL	,NULL	,NULL},			//128KB
+	{262144	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{524288	,0	,0	,NULL	,NULL	,NULL	,NULL},
+	{1048576,0	,0	,NULL	,NULL	,NULL	,NULL},			//1MB
+};
 
 
 unsigned long page_init(struct Page * page,unsigned long flags)
@@ -62,12 +87,12 @@ void init_memory()
 	struct EFI_E820_MEMORY_DESCRIPTOR *p = NULL;	
 	unsigned long * tmp = NULL;
 	
-//	color_printk(BLUE,BLACK,"Display Physics Address MAP,Type(1:RAM,2:ROM or Reserved,3:ACPI Reclaim Memory,4:ACPI NVS Memory,Others:Undefine)\n");
+	color_printk(BLUE,BLACK,"Display Physics Address MAP,Type(1:RAM,2:ROM or Reserved,3:ACPI Reclaim Memory,4:ACPI NVS Memory,Others:Undefine)\n");
 	p = (struct EFI_E820_MEMORY_DESCRIPTOR *)boot_para_info->E820_Info.E820_Entry;
 
 	for(i = 0;i < boot_para_info->E820_Info.E820_Entry_count;i++)
 	{
-//		color_printk(GREEN,BLACK,"UEFI=>KERN---Address:%#018lx\tLength:%#018lx\tType:%#010x\n",p->address,p->length,p->type);
+		//color_printk(GREEN,BLACK,"UEFI=>KERN---Address:%#018lx\tLength:%#018lx\tType:%#010x\n",p->address,p->length,p->type);
 		if(p->type == 1)
 			TotalMem +=  p->length;
 
@@ -98,7 +123,7 @@ void init_memory()
 		TotalMem += (end - start) >> PAGE_2M_SHIFT;
 	}
 	
-//	color_printk(ORANGE,BLACK,"OS Can Used Total 2M PAGEs:%#018lx=%018ld\n",TotalMem,TotalMem);
+	color_printk(ORANGE,BLACK,"OS Can Used Total 2M PAGEs:%#018lx=%018ld\n",TotalMem,TotalMem);
 
 	TotalMem = memory_management_struct.e820[memory_management_struct.e820_length].address + memory_management_struct.e820[memory_management_struct.e820_length].length;
 
@@ -195,11 +220,11 @@ void init_memory()
 
 	memory_management_struct.zones_length = (memory_management_struct.zones_size * sizeof(struct Zone) + sizeof(long) - 1) & ( ~ (sizeof(long) - 1));
 
-//	color_printk(ORANGE,BLACK,"bits_map:%#018lx,bits_size:%#018lx,bits_length:%#018lx\n",memory_management_struct.bits_map,memory_management_struct.bits_size,memory_management_struct.bits_length);
+	//color_printk(ORANGE,BLACK,"bits_map:%#018lx,bits_size:%#018lx,bits_length:%#018lx\n",memory_management_struct.bits_map,memory_management_struct.bits_size,memory_management_struct.bits_length);
 
-//	color_printk(ORANGE,BLACK,"pages_struct:%#018lx,pages_size:%#018lx,pages_length:%#018lx\n",memory_management_struct.pages_struct,memory_management_struct.pages_size,memory_management_struct.pages_length);
+	//color_printk(ORANGE,BLACK,"pages_struct:%#018lx,pages_size:%#018lx,pages_length:%#018lx\n",memory_management_struct.pages_struct,memory_management_struct.pages_size,memory_management_struct.pages_length);
 
-//	color_printk(ORANGE,BLACK,"zones_struct:%#018lx,zones_size:%#018lx,zones_length:%#018lx\n",memory_management_struct.zones_struct,memory_management_struct.zones_size,memory_management_struct.zones_length);
+	//color_printk(ORANGE,BLACK,"zones_struct:%#018lx,zones_size:%#018lx,zones_length:%#018lx\n",memory_management_struct.zones_struct,memory_management_struct.zones_size,memory_management_struct.zones_length);
 
 	ZONE_DMA_INDEX = 0;	
 	ZONE_NORMAL_INDEX = 0;	
@@ -208,17 +233,17 @@ void init_memory()
 	for(i = 0;i < memory_management_struct.zones_size;i++)	
 	{
 		struct Zone * z = memory_management_struct.zones_struct + i;
-//		color_printk(ORANGE,BLACK,"zone_start_address:%#018lx,zone_end_address:%#018lx,zone_length:%#018lx,pages_group:%#018lx,pages_length:%#018lx\n",z->zone_start_address,z->zone_end_address,z->zone_length,z->pages_group,z->pages_length);
+		//color_printk(ORANGE,BLACK,"zone_start_address:%#018lx,zone_end_address:%#018lx,zone_length:%#018lx,pages_group:%#018lx,pages_length:%#018lx\n",z->zone_start_address,z->zone_end_address,z->zone_length,z->pages_group,z->pages_length);
 
 		if(z->zone_start_address >= 0x100000000 && !ZONE_UNMAPED_INDEX)
 			ZONE_UNMAPED_INDEX = i;
 	}
 	
-//	color_printk(ORANGE,BLACK,"ZONE_DMA_INDEX:%d\tZONE_NORMAL_INDEX:%d\tZONE_UNMAPED_INDEX:%d\n",ZONE_DMA_INDEX,ZONE_NORMAL_INDEX,ZONE_UNMAPED_INDEX);
+	//color_printk(ORANGE,BLACK,"ZONE_DMA_INDEX:%d\tZONE_NORMAL_INDEX:%d\tZONE_UNMAPED_INDEX:%d\n",ZONE_DMA_INDEX,ZONE_NORMAL_INDEX,ZONE_UNMAPED_INDEX);
 	
 	memory_management_struct.end_of_struct = (unsigned long)((unsigned long)memory_management_struct.zones_struct + memory_management_struct.zones_length + sizeof(long) * 32) & ( ~ (sizeof(long) - 1));	////need a blank to separate memory_management_struct
 
-//	color_printk(ORANGE,BLACK,"start_code:%#018lx,end_code:%#018lx,end_data:%#018lx,start_brk:%#018lx,end_of_struct:%#018lx\n",memory_management_struct.start_code,memory_management_struct.end_code,memory_management_struct.end_data,memory_management_struct.start_brk, memory_management_struct.end_of_struct);
+	//color_printk(ORANGE,BLACK,"start_code:%#018lx,end_code:%#018lx,end_data:%#018lx,start_brk:%#018lx,end_of_struct:%#018lx\n",memory_management_struct.start_code,memory_management_struct.end_code,memory_management_struct.end_data,memory_management_struct.start_brk, memory_management_struct.end_of_struct);
 	
 	i = Virt_To_Phy(memory_management_struct.end_of_struct) >> PAGE_2M_SHIFT;
 
@@ -233,11 +258,11 @@ void init_memory()
 
 	tmp = Get_gdt();
 
-//	color_printk(INDIGO,BLACK,"tmp\t:%#018lx\n",tmp);
-//	color_printk(INDIGO,BLACK,"*tmp\t:%#018lx\n",*Phy_To_Virt(tmp) & (~0xff));
-//	color_printk(PURPLE,BLACK,"**tmp\t:%#018lx\n",*Phy_To_Virt(*Phy_To_Virt(tmp) & (~0xff)) & (~0xff));
+	//color_printk(INDIGO,BLACK,"tmp\t:%#018lx\n",tmp);
+	//color_printk(INDIGO,BLACK,"*tmp\t:%#018lx\n",*Phy_To_Virt(tmp) & (~0xff));
+	//color_printk(PURPLE,BLACK,"**tmp\t:%#018lx\n",*Phy_To_Virt(*Phy_To_Virt(tmp) & (~0xff)) & (~0xff));
 
-//	color_printk(ORANGE,BLACK,"1.memory_management_struct.bits_map:%#018lx\tzone_struct->page_using_count:%d\tzone_struct->page_free_count:%d\n",*memory_management_struct.bits_map,memory_management_struct.zones_struct->page_using_count,memory_management_struct.zones_struct->page_free_count);
+	//color_printk(ORANGE,BLACK,"1.memory_management_struct.bits_map:%#018lx\tzone_struct->page_using_count:%d\tzone_struct->page_free_count:%d\n",*memory_management_struct.bits_map,memory_management_struct.zones_struct->page_using_count,memory_management_struct.zones_struct->page_free_count);
 
 //	for(i = 0;i < 10;i++)
 //		*(Phy_To_Virt(Global_CR3)  + i) = 0UL;
@@ -675,9 +700,9 @@ struct Slab_cache * slab_create(unsigned long size,void *(* constructor)(void * 
 	
 	page_init(slab_cache->cache_pool->page,PG_Kernel);
 
-	slab_cache->cache_pool->using_count = PAGE_2M_SIZE/slab_cache->size;
+	slab_cache->cache_pool->using_count = 0;
 
-	slab_cache->cache_pool->free_count = slab_cache->cache_pool->using_count;
+	slab_cache->cache_pool->free_count = PAGE_2M_SIZE/slab_cache->size;
 
 	slab_cache->total_free = slab_cache->cache_pool->free_count;
 
@@ -778,8 +803,8 @@ void * slab_malloc(struct Slab_cache * slab_cache,unsigned long arg)
 	
 		page_init(tmp_slab->page,PG_Kernel);
 
-		tmp_slab->using_count = PAGE_2M_SIZE/slab_cache->size;
-		tmp_slab->free_count = tmp_slab->using_count;
+		tmp_slab->using_count = 0;
+		tmp_slab->free_count = PAGE_2M_SIZE/slab_cache->size;
 		tmp_slab->Vaddress = Phy_To_Virt(tmp_slab->page->PHY_address);
 
 		tmp_slab->color_count = tmp_slab->free_count;
@@ -1006,7 +1031,7 @@ unsigned long slab_init()
 
 	//color_printk(ORANGE,BLACK,"3.memory_management_struct.bits_map:%#018lx\tzone_struct->page_using_count:%d\tzone_struct->page_free_count:%d\n",*memory_management_struct.bits_map,memory_management_struct.zones_struct->page_using_count,memory_management_struct.zones_struct->page_free_count);
 
-	//color_printk(ORANGE,BLACK,"start_code:%#018lx,end_code:%#018lx,end_data:%#018lx,end_brk:%#018lx,end_of_struct:%#018lx\n",memory_management_struct.start_code,memory_management_struct.end_code,memory_management_struct.end_data,memory_management_struct.end_brk, memory_management_struct.end_of_struct);
+	//color_printk(ORANGE,BLACK,"start_code:%#018lx,end_code:%#018lx,end_data:%#018lx,start_brk:%#018lx,end_of_struct:%#018lx\n",memory_management_struct.start_code,memory_management_struct.end_code,memory_management_struct.end_data,memory_management_struct.start_brk, memory_management_struct.end_of_struct);
 
 	return 1;
 }
@@ -1015,24 +1040,19 @@ unsigned long slab_init()
 
 */
 
-void pagetable_init(void)
+void pagetable_init()
 {
 	unsigned long i,j;
 	unsigned long * tmp = NULL;
 
-	Global_CR3 = Get_gdt();
-
-	tmp = (unsigned long *)(((unsigned long)Phy_To_Virt((unsigned long)Global_CR3 & (~ 0xfffUL))) + 8 * 256);
+	tmp = (unsigned long *)(((unsigned long)Phy_To_Virt((unsigned long)Get_gdt() & (~ 0xfffUL))) + 8 * 256);
 		
-	//color_printk(YELLOW,BLACK,"1:%#018lx,%#018lx\t\t\n",(unsigned long)tmp,*tmp);
-
+//	color_printk(YELLOW,BLACK,"1:%#018lx,%#018lx\t\t\n",(unsigned long)tmp,*tmp);
 	tmp = Phy_To_Virt(*tmp & (~0xfffUL));
 
-	//color_printk(YELLOW,BLACK,"2:%#018lx,%#018lx\t\t\n",(unsigned long)tmp,*tmp);
-
+//	color_printk(YELLOW,BLACK,"2:%#018lx,%#018lx\t\t\n",(unsigned long)tmp,*tmp);
 	tmp = Phy_To_Virt(*tmp & (~0xfffUL));
-
-	//color_printk(YELLOW,BLACK,"3:%#018lx,%#018lx\t\t\n",(unsigned long)tmp,*tmp);
+//	color_printk(YELLOW,BLACK,"3:%#018lx,%#018lx\t\t\n",(unsigned long)tmp,*tmp);
 
 	for(i = 0;i < memory_management_struct.zones_size;i++)
 	{
@@ -1045,11 +1065,12 @@ void pagetable_init(void)
 		for(j = 0;j < z->pages_length ; j++,p++)
 		{
 			
-			tmp = (unsigned long *)(((unsigned long)Phy_To_Virt((unsigned long)Global_CR3 & (~ 0xfffUL))) + (((unsigned long)Phy_To_Virt(p->PHY_address) >> PAGE_GDT_SHIFT) & 0x1ff) * 8);
+			tmp = (unsigned long *)(((unsigned long)Phy_To_Virt((unsigned long)Get_gdt() & (~ 0xfffUL))) + (((unsigned long)Phy_To_Virt(p->PHY_address) >> PAGE_GDT_SHIFT) & 0x1ff) * 8);
 			
 			if(*tmp == 0)
 			{			
 				unsigned long * virtual = kmalloc(PAGE_4K_SIZE,0);
+				memset(virtual,0,PAGE_4K_SIZE);
 				set_mpl4t(tmp,mk_mpl4t(Virt_To_Phy(virtual),PAGE_KERNEL_GDT));
 			}
 
@@ -1058,6 +1079,7 @@ void pagetable_init(void)
 			if(*tmp == 0)
 			{
 				unsigned long * virtual = kmalloc(PAGE_4K_SIZE,0);
+				memset(virtual,0,PAGE_4K_SIZE);
 				set_pdpt(tmp,mk_pdpt(Virt_To_Phy(virtual),PAGE_KERNEL_Dir));
 			}
 
@@ -1065,8 +1087,8 @@ void pagetable_init(void)
 
 			set_pdt(tmp,mk_pdt(p->PHY_address,PAGE_KERNEL_Page));
 
-			//if(j % 50 == 0)
-			//	color_printk(GREEN,BLACK,"@:%#018lx,%#018lx\t\n",(unsigned long)tmp,*tmp);
+//			if(j % 50 == 0)
+//				color_printk(GREEN,BLACK,"@:%#018lx,%#018lx\t\n",(unsigned long)tmp,*tmp);
 		}
 	}
 

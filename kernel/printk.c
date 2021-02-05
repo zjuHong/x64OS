@@ -9,9 +9,10 @@
 /*
 
 */
-void frame_buffer_init(void)
+
+void frame_buffer_init()
 {
-	//re init frame buffer;
+	////re init frame buffer;
 	unsigned long i;
 	unsigned long * tmp;
 	unsigned long * tmp1;
@@ -47,7 +48,6 @@ void frame_buffer_init(void)
 
 	flush_tlb();
 }
-
 
 /*
 

@@ -4,41 +4,41 @@
 
 ENTRY(_start)
 
-    mov    %ss,    %ax
-    mov    %ax,    %ds
-    mov    %ax,    %es
-    mov    %ax,    %fs
-    mov    %ax,    %ss
-    mov    $0x7E00,    %esp
+	mov	%ss,	%ax
+	mov	%ax,	%ds
+	mov	%ax,	%es
+	mov	%ax,	%fs
+	mov	%ax,	%ss
+	mov	$0x7E00,	%esp
 
-    movq    $0x101000,    %rax
-    movq    %rax,        %cr3
+	movq	$0x101000,	%rax
+	movq	%rax,		%cr3
 
-//=======    load GDTR
+//=======	load GDTR
 
-    lgdt    GDT_POINTER(%rip)
+	lgdt	GDT_POINTER(%rip)
 
-//=======    load    IDTR
+//=======	load	IDTR
 
-    lidt    IDT_POINTER(%rip)
+	lidt	IDT_POINTER(%rip)
 
-    mov    $0x10,    %ax
-    mov    %ax,    %ds
-    mov    %ax,    %es
-    mov    %ax,    %fs
-    mov    %ax,    %gs
-    mov    %ax,    %ss
+	mov	$0x10,	%ax
+	mov	%ax,	%ds
+	mov	%ax,	%es
+	mov	%ax,	%fs
+	mov	%ax,	%gs
+	mov	%ax,	%ss
 
-    movq    _stack_start(%rip),    %rsp
+	movq	_stack_start(%rip),	%rsp
 
-//=======    load    cr3
+//=======	load	cr3
 
-    movq    $0x101000,    %rax
-    movq    %rax,        %cr3
-    movq    switch_seg(%rip),    %rax
-    pushq    $0x08
-    pushq    %rax
-    lretq
+	movq	$0x101000,	%rax
+	movq	%rax,		%cr3
+	movq	switch_seg(%rip),	%rax
+	pushq	$0x08
+	pushq	%rax
+	lretq
 
 //=======	64-bit mode code
 
@@ -52,6 +52,11 @@ entry64:
 	movq	%rax,	%gs
 	movq	%rax,	%ss
 	movq	_stack_start(%rip),	%rsp		/* rsp address */
+
+	movq	$0x1b,	%rcx		//if APU
+	rdmsr
+	bt	$8,	%rax
+	jnc	start_smp
 
 setup_IDT:							
 	leaq	ignore_int(%rip),	%rdx
@@ -74,7 +79,7 @@ rp_sidt:
 	jne	rp_sidt
 
 setup_TSS64:
-	leaq	TSS64_Table(%rip),	%rdx
+	leaq	init_tss(%rip),	%rdx
 	xorq	%rax,	%rax
 	xorq	%rcx,	%rcx
 	movq	$0x89,	%rax
@@ -104,6 +109,15 @@ setup_TSS64:
 
 go_to_kernel:
 	.quad	Start_Kernel
+
+start_smp:
+	movq	go_to_smp_kernel(%rip),	%rax		/* movq address */
+	pushq	$0x08
+	pushq	%rax
+	lretq
+
+go_to_smp_kernel:
+	.quad	Start_SMP
 
 
 //=======	ignore_int
@@ -177,68 +191,65 @@ int_msg:
 ENTRY(_stack_start)
 	.quad	init_task_union + 32768
 
-
-
-//=======    init page
+//=======	init page
 .align 8
 
-.org    0x1000
+.org	0x1000
 
 __PML4E:
 
-    .quad    0x102007
-    .fill    255,8,0
-    .quad    0x102007
-    .fill    255,8,0
+	.quad	0x102003
+	.fill	255,8,0
+	.quad	0x102003
+	.fill	255,8,0
 
-.org    0x2000
+.org	0x2000
 
 __PDPTE:
+	
+	.quad	0x103003	/* 0x103003 */
+	.fill	511,8,0
 
-    .quad    0x103007    /* 0x103003 */
-    .fill    511,8,0
-
-.org    0x3000
+.org	0x3000
 
 __PDE:
 
-    .quad    0x000087    
-    .quad    0x200087
-    .quad    0x400087
-    .quad    0x600087
-    .quad    0x800087
-    .quad    0xa00087        /*0x a00000*/
-    .quad    0xc00087
-    .quad    0xe00087
-    .quad    0x1000087
-    .quad    0x1200087        /*0x1000000*/
-    .quad    0x1400087
-    .quad    0x1600087
-    .quad    0x1800087
-
-    .quad	0x1a00087
-    .quad	0x1c00087
-    .quad	0x1e00087
-    .quad	0x2000087
-    .quad	0x2200087
-    .quad	0x2400087
-    .quad	0x2600087
-    .quad	0x2800087
-    .quad	0x2a00087
-    .quad	0x2c00087
-    .quad	0x2e00087
-
+	.quad	0x000083	
+	.quad	0x200083
+	.quad	0x400083
+	.quad	0x600083
+	.quad	0x800083		/* 0x800083 */
+	.quad	0xa00083
+	.quad	0xc00083
+	.quad	0xe00083
+	.quad	0x1000083
+	.quad	0x1200083
+	.quad	0x1400083
+	.quad	0x1600083
+	.quad	0x1800083
+	.quad	0x1a00083
+	.quad	0x1c00083
+	.quad	0x1e00083
+	.quad	0x2000083
+	.quad	0x2200083
+	.quad	0x2400083
+	.quad	0x2600083
+	.quad	0x2800083
+	.quad	0x2a00083
+	.quad	0x2c00083
+	.quad	0x2e00083
 
 
-    .quad	0xe0000087		/*0x 3000000*/
-    .quad	0xe0200087
-    .quad	0xe0400087
-    .quad	0xe0600087
-    .quad	0xe0800087
-    .quad	0xe0a00087
-    .quad	0xe0c00087
-    .quad	0xe0e00087
-    .fill    480,8,0
+
+	.quad	0xe0000083		/*0x 3000000*/
+	.quad	0xe0200083
+	.quad	0xe0400083
+	.quad	0xe0600083
+	.quad	0xe0800083
+	.quad	0xe0a00083
+	.quad	0xe0c00083
+	.quad	0xe0e00083
+	.fill	480,8,0
 
 //=======	GDT_Table
 
@@ -256,7 +267,7 @@ GDT_Table:
 	.quad	0x0000f20000000000			/*6	USER	Data	64-bit	Segment	30*/
 	.quad	0x00cf9a000000ffff			/*7	KERNEL	Code	32-bit	Segment	38*/
 	.quad	0x00cf92000000ffff			/*8	KERNEL	Data	32-bit	Segment	40*/
-	.fill	10,8,0					/*10 ~ 11 TSS (jmp one segment <9>) in long-mode 128-bit 50*/
+	.fill	100,8,0					/*10 ~ 11 TSS (jmp one segment <9>) in long-mode 128-bit 50*/
 GDT_END:
 
 GDT_POINTER:
@@ -275,16 +286,4 @@ IDT_POINTER:
 IDT_LIMIT:	.word	IDT_END - IDT_Table - 1
 IDT_BASE:	.quad	IDT_Table
 
-//=======	TSS64_Table
-
-.globl	TSS64_Table
-
-TSS64_Table:
-	.fill  13,8,0
-TSS64_END:
-
-
-TSS64_POINTER:
-TSS64_LIMIT:	.word	TSS64_END - TSS64_Table - 1
-TSS64_BASE:	.quad	TSS64_Table
 

@@ -6,7 +6,17 @@
 #include "trap.h"
 #include "memory.h"
 #include "task.h"
+#include "cpu.h"
+#include "interrupt.h"
+
+#if  APIC
+#include "APIC.h"
+#else
+#include "8259A.h"
+#endif
+
 #include "keyboard.h"
+#include "mouse.h"
 
 /*
 	static var 
@@ -17,11 +27,7 @@ struct KERNEL_BOOT_PARAMETER_INFORMATION *boot_para_info = (struct KERNEL_BOOT_P
 
 void Start_Kernel(void)
 {
-	int *addr = (int *)0xffff800000a00000;
-	int i;
-	struct Page * page = NULL;
-	void * tmp = NULL;
-	struct Slab *slab = NULL;
+	memset((void*)&_bss,0,(unsigned long)&_end-(unsigned long)&_bss);
 
 	Pos.XResolution = boot_para_info->Graphics_Info.HorizontalResolution;
 	Pos.YResolution = boot_para_info->Graphics_Info.VerticalResolution;
@@ -39,9 +45,11 @@ void Start_Kernel(void)
 	
 	load_TR(10);
 
+	set_tss64((unsigned int *)&init_tss[0],_stack_start, _stack_start, _stack_start, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
+
 	sys_vector_init();
 
-	set_tss64(_stack_start, _stack_start, _stack_start, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
+	init_cpu();
 
 	memory_management_struct.start_code = (unsigned long)& _text;
 	memory_management_struct.end_code   = (unsigned long)& _etext;
@@ -63,14 +71,34 @@ void Start_Kernel(void)
 	pagetable_init();
 
 	color_printk(RED,BLACK,"interrupt init \n");
-	init_interrupt();
+
+#if  APIC
+	APIC_IOAPIC_init();
+#else
+	init_8259A();
+#endif
 
 	color_printk(RED,BLACK,"keyboard init \n");
 	keyboard_init();
 
+	color_printk(RED,BLACK,"mouse init \n");
+	mouse_init();
+
+	//	color_printk(RED,BLACK,"task_init \n");
+	//	task_init();
+
+	sti();
+
+	color_printk(RED,BLACK,"start while(1) \n");
+	while(1)
+	{
+		if (p_kb->count)
+			analysis_keycode();
+		if (p_mouse->count)
+			analysis_mousecode();
+	}
+
 	//color_printk(RED,BLACK,"task_init \n");
 	//task_init();
 
-	while(1)
-		analysis_keycode();
 }

@@ -1,7 +1,8 @@
 #ifndef __MEMORY_H__
+
 #define __MEMORY_H__
 
-#include "printk.h"
+#include "UEFI_boot_param_info.h"
 #include "lib.h"
 
 //	8Bytes per cell
@@ -12,6 +13,7 @@
 */
 
 #define PAGE_OFFSET	((unsigned long)0xffff800000000000)
+#define	TASK_SIZE	((unsigned long)0x00007fffffffffff)
 
 #define PAGE_GDT_SHIFT	39
 #define PAGE_1G_SHIFT	30
@@ -77,6 +79,9 @@
 //7,1,0
 #define	PAGE_KERNEL_Page	(PAGE_PS  | PAGE_R_W | PAGE_Present)
 
+//1,0
+#define PAGE_USER_GDT		(PAGE_U_S | PAGE_R_W | PAGE_Present)
+
 //2,1,0
 #define PAGE_USER_Dir		(PAGE_U_S | PAGE_R_W | PAGE_Present)
 
@@ -103,22 +108,13 @@ typedef struct {unsigned long pt;} pt_t;
 #define mk_pt(addr,attr)	((unsigned long)(addr) | (unsigned long)(attr))
 #define set_pt(ptptr,ptval)		(*(ptptr) = (ptval))
 
-unsigned long * Global_CR3 = NULL;
-
-struct E820
-{
-	unsigned long address;
-	unsigned long length;
-	unsigned int	type;
-}__attribute__((packed));
-
 /*
 
 */
 
 struct Global_Memory_Descriptor
 {
-	struct E820 	e820[32];
+	struct EFI_E820_MEMORY_DESCRIPTOR 	e820[32];
 	unsigned long 	e820_length;
 
 	unsigned long * bits_map;
@@ -133,7 +129,7 @@ struct Global_Memory_Descriptor
 	unsigned long	zones_size;
 	unsigned long 	zones_length;
 
-	unsigned long 	start_code , end_code , end_data , end_rodata , start_brk, end_brk;
+	unsigned long 	start_code , end_code , end_data , end_rodata , start_brk;
 
 	unsigned long	end_of_struct;	
 };
@@ -245,25 +241,7 @@ struct Slab_cache
 	kmalloc`s struct
 */
 
-struct Slab_cache kmalloc_cache_size[16] = 
-{
-	{32	,0	,0	,NULL	,NULL	,NULL	,NULL},
-	{64	,0	,0	,NULL	,NULL	,NULL	,NULL},
-	{128	,0	,0	,NULL	,NULL	,NULL	,NULL},
-	{256	,0	,0	,NULL	,NULL	,NULL	,NULL},
-	{512	,0	,0	,NULL	,NULL	,NULL	,NULL},
-	{1024	,0	,0	,NULL	,NULL	,NULL	,NULL},			//1KB
-	{2048	,0	,0	,NULL	,NULL	,NULL	,NULL},
-	{4096	,0	,0	,NULL	,NULL	,NULL	,NULL},			//4KB
-	{8192	,0	,0	,NULL	,NULL	,NULL	,NULL},
-	{16384	,0	,0	,NULL	,NULL	,NULL	,NULL},
-	{32768	,0	,0	,NULL	,NULL	,NULL	,NULL},
-	{65536	,0	,0	,NULL	,NULL	,NULL	,NULL},			//64KB
-	{131072	,0	,0	,NULL	,NULL	,NULL	,NULL},			//128KB
-	{262144	,0	,0	,NULL	,NULL	,NULL	,NULL},
-	{524288	,0	,0	,NULL	,NULL	,NULL	,NULL},
-	{1048576,0	,0	,NULL	,NULL	,NULL	,NULL},			//1MB
-};
+extern struct Slab_cache kmalloc_cache_size[16];
 
 #define SIZEOF_LONG_ALIGN(size) ((size + sizeof(long) - 1) & ~(sizeof(long) - 1) )
 #define SIZEOF_INT_ALIGN(size) ((size + sizeof(int) - 1) & ~(sizeof(int) - 1) )
@@ -389,6 +367,8 @@ unsigned long slab_init();
 
 */
 
-void pagetable_init(void);
+void pagetable_init();
+
+unsigned long do_brk(unsigned long addr,unsigned long len);
 
 #endif
