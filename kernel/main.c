@@ -1,13 +1,11 @@
 #include "UEFI_boot_param_info.h"
 #include "lib.h"
 #include "printk.h"
-//#include "spinlock.h"
 #include "gate.h"
 #include "trap.h"
 #include "memory.h"
 #include "task.h"
 #include "cpu.h"
-#include "interrupt.h"
 
 #if  APIC
 #include "APIC.h"
@@ -15,11 +13,12 @@
 #include "8259A.h"
 #endif
 
-#include "time.h"
-
 #include "keyboard.h"
 #include "mouse.h"
 #include "disk.h"
+#include "SMP.h"
+#include "HPET.h"
+#include "timer.h"
 
 /*
 	static var 
@@ -32,7 +31,6 @@ void Start_Kernel(void)
 {
 	unsigned int i;
 	char buf[512];
-	struct time time;
 
 	memset((void*)&_bss,0,(unsigned long)&_end-(unsigned long)&_bss);
 
@@ -85,9 +83,12 @@ void Start_Kernel(void)
 	init_8259A();
 #endif
 
-	get_cmos_time(&time);
+	color_printk(RED,BLACK,"Soft IRQ init \n");
+	softirq_init();
 
-	color_printk(RED,BLACK,"year:%#010x,month:%#010x,day:%#010x,hour:%#010x,mintue:%#010x,second:%#010x\n",time.year,time.month,time.day,time.hour,time.minute,time.second);
+	color_printk(RED,BLACK,"Timer & Clock init \n");
+	timer_init();
+	HPET_init();
 
 	color_printk(RED,BLACK,"keyboard init \n");
 	keyboard_init();
@@ -95,8 +96,8 @@ void Start_Kernel(void)
 	color_printk(RED,BLACK,"mouse init \n");
 	mouse_init();
 
-	color_printk(RED,BLACK,"disk init \n");
-	disk_init();
+	//color_printk(RED,BLACK,"disk init \n");
+	//disk_init();
 	
 	//	color_printk(RED,BLACK,"task_init \n");
 	//	task_init();
