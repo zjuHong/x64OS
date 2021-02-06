@@ -15,6 +15,8 @@
 #include "8259A.h"
 #endif
 
+#include "time.h"
+
 #include "keyboard.h"
 #include "mouse.h"
 #include "disk.h"
@@ -30,6 +32,7 @@ void Start_Kernel(void)
 {
 	unsigned int i;
 	char buf[512];
+	struct time time;
 
 	memset((void*)&_bss,0,(unsigned long)&_end-(unsigned long)&_bss);
 
@@ -82,6 +85,10 @@ void Start_Kernel(void)
 	init_8259A();
 #endif
 
+	get_cmos_time(&time);
+
+	color_printk(RED,BLACK,"year:%#010x,month:%#010x,day:%#010x,hour:%#010x,mintue:%#010x,second:%#010x\n",time.year,time.month,time.day,time.hour,time.minute,time.second);
+
 	color_printk(RED,BLACK,"keyboard init \n");
 	keyboard_init();
 
@@ -90,22 +97,7 @@ void Start_Kernel(void)
 
 	color_printk(RED,BLACK,"disk init \n");
 	disk_init();
-
-	color_printk(PURPLE,BLACK,"disk write:\n");
-	memset(buf,0x44,512);
-	IDE_device_operation.transfer(ATA_WRITE_CMD,0x08,1,(unsigned char *)buf);
-
-	color_printk(PURPLE,BLACK,"disk write end\n");
-
-	color_printk(PURPLE,BLACK,"disk read:\n");
-	memset(buf,0x00,512);
-	IDE_device_operation.transfer(ATA_READ_CMD,0x08,1,(unsigned char *)buf);
 	
-	for(i = 0 ;i < 512 ; i++)
-		color_printk(BLACK,WHITE,"%02x",buf[i]);
-	color_printk(PURPLE,BLACK,"\ndisk read end\n");
-
-
 	//	color_printk(RED,BLACK,"task_init \n");
 	//	task_init();
 

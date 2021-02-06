@@ -7,8 +7,8 @@ PIC := APIC
 all: system
 	objcopy -I elf64-x86-64 -S -R ".eh_frame" -R ".comment" -O binary system kernel.bin
 
-system:	head.o entry.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o cpu.o keyboard.o mouse.o disk.o SMP.o
-	ld -b elf64-x86-64 -z muldefs -o system head.o entry.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o cpu.o keyboard.o mouse.o disk.o SMP.o -T Kernel.lds 
+system:	head.o entry.o main.o printk.o trap.o memory.o interrupt.o PIC.o time.o task.o cpu.o keyboard.o mouse.o disk.o SMP.o
+	ld -b elf64-x86-64 -z muldefs -o system head.o entry.o main.o printk.o trap.o memory.o interrupt.o PIC.o time.o task.o cpu.o keyboard.o mouse.o disk.o SMP.o -T Kernel.lds 
 
 head.o:	head.S
 	gcc-4.8 -E head.S > head.s
@@ -41,6 +41,9 @@ PIC.o: 8259A.c
 	gcc-4.8  $(CFLAGS) -c 8259A.c -o PIC.o
 endif
 	
+time.o: time.c
+	gcc-4.8  $(CFLAGS) -c time.c	
+
 task.o: task.c
 	gcc-4.8  $(CFLAGS) -c task.c	
 	
