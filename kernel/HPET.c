@@ -6,6 +6,8 @@
 #include "time.h"
 #include "timer.h"
 #include "softirq.h"
+#include "task.h"
+#include "schedule.h"
 
 hw_int_controller HPET_int_controller = 
 {
@@ -21,10 +23,24 @@ void HPET_handler(unsigned long nr, unsigned long parameter, struct pt_regs * re
 	jiffies++;
 	
 	if((container_of(list_next(&timer_list_head.list),struct timer_list,list)->expire_jiffies <= jiffies))
-	{
 		set_softirq_status(TIMER_SIRQ);
-		jiffies = 0;
+	
+	switch(current->priority)
+	{
+		case 0:
+		case 1:
+			task_schedule.CPU_exec_task_jiffies--;
+			current->vrun_time += 1;
+			break;
+		case 2:
+		default:
+			task_schedule.CPU_exec_task_jiffies -= 2;
+			current->vrun_time += 2;
+			break;
 	}
+
+	if(task_schedule.CPU_exec_task_jiffies <= 0)
+		current->flags |= NEED_SCHEDULE;
 }
 
 extern struct time time;
@@ -35,7 +51,6 @@ void HPET_init()
 	unsigned int * p;
 	unsigned char * HPET_addr = (unsigned char *)Phy_To_Virt(0xfed00000);
 	struct IO_APIC_RET_entry entry;
-
 	
 	//get RCBA address
 	io_out32(0xcf8,0x8000f8f0);
@@ -89,3 +104,4 @@ void HPET_init()
 	
 	color_printk(RED,BLACK,"year:%#010x,month:%#010x,day:%#010x,hour:%#010x,mintue:%#010x,second:%#010x\n",time.year,time.month,time.day,time.hour,time.minute,time.second);
 }
+

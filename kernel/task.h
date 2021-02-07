@@ -46,6 +46,7 @@ extern unsigned long _stack_start;
 
 */
 
+
 struct mm_struct
 {
 	pml4t_t *pgd;	//page table point
@@ -53,9 +54,8 @@ struct mm_struct
 	unsigned long start_code,end_code;
 	unsigned long start_data,end_data;
 	unsigned long start_rodata,end_rodata;
-	unsigned long start_bss,end_bss;
 	unsigned long start_brk,end_brk;
-	unsigned long start_stack;
+	unsigned long start_stack;	
 };
 
 /*
@@ -81,15 +81,11 @@ struct thread_struct
 
 */
 
-#define PF_KTHREAD	(1 << 0)
-
 struct task_struct
 {
 	volatile long state;
 	unsigned long flags;
-	long preempt_count;
 	long signal;
-	long cpu_id;		//CPU ID
 
 	struct mm_struct *mm;
 	struct thread_struct *thread;
@@ -101,12 +97,14 @@ struct task_struct
 	long pid;
 	long priority;
 	long vrun_time;
-
-	long exit_code;
-
-	struct task_struct *next;
-	struct task_struct *parent;
 };
+
+///////struct task_struct->flags:
+
+#define PF_KTHREAD	(1UL << 0)
+#define NEED_SCHEDULE	(1UL << 1)
+
+
 
 union task_union
 {
@@ -121,23 +119,16 @@ struct thread_struct init_thread;
 {			\
 	.state = TASK_UNINTERRUPTIBLE,		\
 	.flags = PF_KTHREAD,		\
-	.preempt_count = 0,		\
 	.signal = 0,		\
-	.cpu_id = 0,		\
 	.mm = &init_mm,			\
 	.thread = &init_thread,		\
-	.addr_limit = 0xffffffffffffffff,	\
+	.addr_limit = 0xffff800000000000,	\
 	.pid = 0,			\
 	.priority = 2,		\
-	.vrun_time = 0,		\
-	.exit_code = 0,		\
-	.next = &tsk,		\
-	.parent = &tsk,		\
+	.vrun_time = 0		\
 }
 
-
 union task_union init_task_union __attribute__((__section__ (".data.init_task"))) = {INIT_TASK(init_task_union.task)};
-
 
 struct task_struct *init_task[NR_CPUS] = {&init_task_union.task,0};
 
@@ -202,7 +193,7 @@ struct tss_struct init_tss[NR_CPUS] = { [0 ... NR_CPUS-1] = INIT_TSS };
 */
 
 
-static inline	struct task_struct * get_current()
+inline	struct task_struct * get_current()
 {
 	struct task_struct * current = NULL;
 	__asm__ __volatile__ ("andq %%rsp,%0	\n\t":"=r"(current):"0"(~32767UL));
@@ -250,7 +241,6 @@ void task_init();
 
 typedef unsigned long (* system_call_t)(struct pt_regs * regs);
 
-/*
 unsigned long no_system_call(struct pt_regs * regs)
 {
 	color_printk(RED,BLACK,"no_system_call is calling,NR:%#04x\n",regs->rax);
@@ -263,13 +253,13 @@ unsigned long sys_printf(struct pt_regs * regs)
 	return 1;
 }
 
-
 system_call_t system_call_table[MAX_SYSTEM_CALL_NR] = 
 {
 	[0] = no_system_call,
 	[1] = sys_printf,
 	[2 ... MAX_SYSTEM_CALL_NR-1] = no_system_call
 };
-*/
+
 
 #endif
+

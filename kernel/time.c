@@ -21,5 +21,5 @@ int get_cmos_time(struct time *time)
 	
 	io_out8(0x70,0x00); 
 
-	sti();
+	//sti();
 }

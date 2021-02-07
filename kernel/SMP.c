@@ -9,4 +9,5 @@ int global_i = 0;
 
 void Start_SMP()
 {
+	memset(current,0,sizeof(struct task_struct));
 }

@@ -1,34 +1,16 @@
 #include "task.h"
-#include "gate.h"
 #include "ptrace.h"
 #include "printk.h"
 #include "lib.h"
 #include "memory.h"
 #include "linkage.h"
+#include "gate.h"
+#include "schedule.h"
 
 
 extern void ret_system_call(void);
 extern void system_call(void);
 
-
-unsigned long no_system_call(struct pt_regs * regs)
-{
-	color_printk(RED,BLACK,"no_system_call is calling,NR:%#04x\n",regs->rax);
-	return -1;
-}
-
-unsigned long sys_printf(struct pt_regs * regs)
-{
-	color_printk(BLACK,WHITE,(char *)regs->rdi);
-	return 1;
-}
-
-system_call_t system_call_table[MAX_SYSTEM_CALL_NR] = 
-{
-	[0] = no_system_call,
-	[1] = sys_printf,
-	[2 ... MAX_SYSTEM_CALL_NR-1] = no_system_call
-};
 
 void user_level_function()
 {
@@ -50,6 +32,11 @@ void user_level_function()
 
 unsigned long do_execve(struct pt_regs * regs)
 {
+	unsigned long addr = 0x800000;
+	unsigned long * tmp;
+	unsigned long * virtual = NULL;
+	struct Page * p = NULL;
+	
 	regs->rdx = 0x800000;	//RIP
 	regs->rcx = 0xa00000;	//RSP
 	regs->rax = 1;	
@@ -57,9 +44,29 @@ unsigned long do_execve(struct pt_regs * regs)
 	regs->es = 0;
 	color_printk(RED,BLACK,"do_execve task is running\n");
 
+	tmp = Phy_To_Virt((unsigned long *)((unsigned long)Get_gdt() & (~ 0xfffUL)) + ((addr >> PAGE_GDT_SHIFT) & 0x1ff));
+
+	virtual = kmalloc(PAGE_4K_SIZE,0);
+	memset(virtual,0,PAGE_4K_SIZE);
+	set_mpl4t(tmp,mk_mpl4t(Virt_To_Phy(virtual),PAGE_USER_GDT));
+
+	tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((addr >> PAGE_1G_SHIFT) & 0x1ff));
+	virtual = kmalloc(PAGE_4K_SIZE,0);
+	memset(virtual,0,PAGE_4K_SIZE);
+	set_pdpt(tmp,mk_pdpt(Virt_To_Phy(virtual),PAGE_USER_Dir));
+
+	tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((addr >> PAGE_2M_SHIFT) & 0x1ff));
+	p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped);
+	set_pdt(tmp,mk_pdt(p->PHY_address,PAGE_USER_Page));
+
+	flush_tlb();
+	
+	if(!(current->flags & PF_KTHREAD))
+		current->addr_limit = 0xffff800000000000;
+
 	memcpy(user_level_function,(void *)0x800000,1024);
 
-	return 0;
+	return 1;
 }
 
 
@@ -72,6 +79,7 @@ unsigned long init(unsigned long arg)
 	current->thread->rip = (unsigned long)ret_system_call;
 	current->thread->rsp = (unsigned long)current + STACK_SIZE - sizeof(struct pt_regs);
 	regs = (struct pt_regs *)current->thread->rsp;
+	current->flags = 0;
 
 	__asm__	__volatile__	(	"movq	%1,	%%rsp	\n\t"
 					"pushq	%2		\n\t"
@@ -91,7 +99,6 @@ unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned
 	
 	color_printk(WHITE,BLACK,"alloc_pages,bitmap:%#018lx\n",*memory_management_struct.bits_map);
 
-	//p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped | PG_Active | PG_Kernel);
 	p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped | PG_Kernel);
 
 	color_printk(WHITE,BLACK,"alloc_pages,bitmap:%#018lx\n",*memory_management_struct.bits_map);
@@ -103,25 +110,30 @@ unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned
 	*tsk = *current;
 
 	list_init(&tsk->list);
-	list_add_to_before(&init_task_union.task.list,&tsk->list);	
+
+	tsk->priority = 2;
 	tsk->pid++;	
 	tsk->state = TASK_UNINTERRUPTIBLE;
 
 	thd = (struct thread_struct *)(tsk + 1);
-	tsk->thread = thd;	
+	memset(thd,0,sizeof(*thd));
+	tsk->thread = thd;
 
 	memcpy(regs,(void *)((unsigned long)tsk + STACK_SIZE - sizeof(struct pt_regs)),sizeof(struct pt_regs));
 
 	thd->rsp0 = (unsigned long)tsk + STACK_SIZE;
 	thd->rip = regs->rip;
 	thd->rsp = (unsigned long)tsk + STACK_SIZE - sizeof(struct pt_regs);
+	thd->fs = KERNEL_DS;
+	thd->gs = KERNEL_DS;
 
 	if(!(tsk->flags & PF_KTHREAD))
 		thd->rip = regs->rip = (unsigned long)ret_system_call;
 
 	tsk->state = TASK_RUNNING;
+	insert_task_queue(tsk);
 
-	return 0;
+	return 1;
 }
 
 
@@ -189,10 +201,14 @@ int kernel_thread(unsigned long (* fn)(unsigned long), unsigned long arg, unsign
 	return do_fork(&regs,flags,0,0);
 }
 
+
+
 inline void __switch_to(struct task_struct *prev,struct task_struct *next)
 {
-//	init_tss[SMP_cpu_id()].rsp0 = next->thread->rsp0;
+
 	init_tss[0].rsp0 = next->thread->rsp0;
+
+	set_tss64(TSS64_Table,init_tss[0].rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
 
 	__asm__ __volatile__("movq	%%fs,	%0 \n\t":"=a"(prev->thread->fs));
 	__asm__ __volatile__("movq	%%gs,	%0 \n\t":"=a"(prev->thread->gs));
@@ -201,6 +217,11 @@ inline void __switch_to(struct task_struct *prev,struct task_struct *next)
 	__asm__ __volatile__("movq	%0,	%%gs \n\t"::"a"(next->thread->gs));
 
 	wrmsr(0x175,next->thread->rsp0);
+
+	color_printk(WHITE,BLACK,"prev->thread->rsp0:%#018lx\t",prev->thread->rsp0);
+	color_printk(WHITE,BLACK,"prev->thread->rsp :%#018lx\n",prev->thread->rsp);
+	color_printk(WHITE,BLACK,"next->thread->rsp0:%#018lx\t",next->thread->rsp0);
+	color_printk(WHITE,BLACK,"next->thread->rsp :%#018lx\n",next->thread->rsp);
 }
 
 /*
@@ -209,25 +230,7 @@ inline void __switch_to(struct task_struct *prev,struct task_struct *next)
 
 void task_init()
 {
-	unsigned long * tmp = NULL;
-	unsigned long * vaddr = NULL;
-	int i = 0;
-
-	vaddr = (unsigned long *)Phy_To_Virt((unsigned long)Get_gdt() & (~ 0xfffUL));
-	
-	*vaddr = 0UL;
-
-	for(i = 256;i<512;i++)
-	{
-		tmp = vaddr + i;
-
-		if(*tmp == 0)
-		{			
-			unsigned long * virtual = kmalloc(PAGE_4K_SIZE,0);
-			memset(virtual,0,PAGE_4K_SIZE);
-			set_mpl4t(tmp,mk_mpl4t(Virt_To_Phy(virtual),PAGE_KERNEL_GDT));
-		}
-	}
+	struct task_struct *tmp = NULL;
 
 	init_mm.pgd = (pml4t_t *)Get_gdt();
 
@@ -238,13 +241,10 @@ void task_init()
 	init_mm.end_data = memory_management_struct.end_data;
 
 	init_mm.start_rodata = (unsigned long)&_rodata; 
-	init_mm.end_rodata = memory_management_struct.end_rodata;
+	init_mm.end_rodata = (unsigned long)&_erodata;
 
-	init_mm.start_bss = (unsigned long)&_bss;
-	init_mm.end_bss = (unsigned long)&_ebss;
-
-	init_mm.start_brk = memory_management_struct.start_brk;
-	init_mm.end_brk = current->addr_limit;
+	init_mm.start_brk = 0;
+	init_mm.end_brk = memory_management_struct.end_brk;
 
 	init_mm.start_stack = _stack_start;
 	
@@ -253,16 +253,18 @@ void task_init()
 	wrmsr(0x176,(unsigned long)system_call);
 	
 //	init_thread,init_tss
-//	set_tss64(TSS64_Table,init_thread.rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
+	set_tss64(TSS64_Table,init_thread.rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
 
-	//init_tss[SMP_cpu_id()].rsp0 = init_thread.rsp0;
 	init_tss[0].rsp0 = init_thread.rsp0;
 
 	list_init(&init_task_union.task.list);
 
-	kernel_thread(init,10,CLONE_FS | CLONE_SIGNAL);
+	kernel_thread(init,10,CLONE_FS | CLONE_FILES | CLONE_SIGNAL);
 
-	init_task_union.task.preempt_count = 0;
 	init_task_union.task.state = TASK_RUNNING;
-	init_task_union.task.cpu_id = 0;
+
+//	tmp = container_of(list_next(&task_schedule.task_queue.list),struct task_struct,list);
+//	switch_to(current,tmp);
 }
+
+

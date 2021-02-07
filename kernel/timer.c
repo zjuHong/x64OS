@@ -59,6 +59,7 @@ void do_timer(void * data)
 		del_timer(tmp);
 		tmp->func(tmp->data);
 		tmp = container_of(list_next(&timer_list_head.list),struct timer_list,list);
+		jiffies = 0;
 	}
 
 	color_printk(RED,WHITE,"(HPET:%ld)",jiffies);

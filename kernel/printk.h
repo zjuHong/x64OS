@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include "font.h"
 #include "linkage.h"
-//#include "spinlock.h"
+#include "spinlock.h"
 
 #define ZEROPAD	1		/* pad with zero */
 #define SIGN	2		/* unsigned/signed long */
@@ -47,16 +47,15 @@ struct position
 
 	unsigned int * FB_addr;
 	unsigned long FB_length;
-	
-	//spinlock_T printk_lock;
-}Pos;
 
+	spinlock_T printk_lock;
+}Pos;
 
 /*
 
 */
 
-void frame_buffer_init(void);
+void frame_buffer_init();
 
 /*
 

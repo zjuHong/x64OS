@@ -256,7 +256,7 @@ void init_memory()
 		tmp_page->zone_struct->page_free_count--;
 	}
 
-	tmp = Get_gdt();
+	//tmp = Get_gdt();
 
 	//color_printk(INDIGO,BLACK,"tmp\t:%#018lx\n",tmp);
 	//color_printk(INDIGO,BLACK,"*tmp\t:%#018lx\n",*Phy_To_Virt(tmp) & (~0xff));

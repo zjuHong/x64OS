@@ -28,114 +28,117 @@ OLDSS	=	0xb8
 ////struct task_struct member offset
 TSK_STATE	=	0x00
 TSK_FLAGS	=	0x08
-TSK_PREEMPT	=	0x10
-TSK_SIGNAL	=	0x18
+TSK_SIGNAL	=	0x10
 
 
 RESTORE_ALL:
-	popq	%r15
-	popq	%r14
-	popq	%r13
-	popq	%r12
-	popq	%r11
-	popq	%r10
-	popq	%r9
-	popq	%r8
-	popq	%rbx
-	popq	%rcx
-	popq	%rdx
-	popq	%rsi
-	popq	%rdi
-	popq	%rbp
-	popq	%rax
-	movq	%rax,	%ds
-	popq	%rax
-	movq	%rax,	%es
-	popq	%rax
-	addq	$0x10,	%rsp
-	iretq
+	popq	%r15;		
+	popq	%r14;		
+	popq	%r13;		
+	popq	%r12;		
+	popq	%r11;		
+	popq	%r10;		
+	popq	%r9;		
+	popq	%r8;		
+	popq	%rbx;		
+	popq	%rcx;		
+	popq	%rdx;		
+	popq	%rsi;		
+	popq	%rdi;		
+	popq	%rbp;		
+	popq	%rax;		
+	movq	%rax,	%ds;	
+	popq	%rax;		
+	movq	%rax,	%es;	
+	popq	%rax;		
+	addq	$0x10,	%rsp;	
+	iretq;
 
 #define GET_CURRENT(reg)	\
 	movq	$-32768,reg;	\
 	andq	%rsp,	reg
 
 ret_from_exception:
-	/*GET_CURRENT(%ebx)	need rewrite*/
+	
 ENTRY(ret_from_intr)
 	movq	$-1,	%rcx
 	testq	softirq_status(%rip),	%rcx
 	jnz	softirq_handler
-	jmp	RESTORE_ALL	/*need rewrite*/
+	GET_CURRENT(%rbx)
+	movq	TSK_FLAGS(%rbx),	%rcx
+	testq	$2,	%rcx
+	jnz	reschedule
+	jmp	RESTORE_ALL	
 
 softirq_handler:
 	callq	do_softirq
-	jmp	RESTORE_ALL	
-	
+	GET_CURRENT(%rbx)
+	movq	TSK_FLAGS(%rbx),	%rcx
+	testq	$2,	%rcx
+	jnz	reschedule
+	jmp	RESTORE_ALL		
+
+reschedule:
+	callq	schedule
+	jmp	RESTORE_ALL
+
+
 ENTRY(system_call)
 	sti
+	subq	$0x38,	%rsp			 
+	cld;					 
 
-	subq	$0x38,	%rsp
-	cld
+	pushq	%rax;				 	
+	movq	%es,	%rax;			 	
+	pushq	%rax;				 	
+	movq	%ds,	%rax;			 	
+	pushq	%rax;				 	
+	xorq	%rax,	%rax;			 	
+	pushq	%rbp;				 	
+	pushq	%rdi;				 	
+	pushq	%rsi;				 	
+	pushq	%rdx;				 	
+	pushq	%rcx;				 
+	pushq	%rbx;				 	
+	pushq	%r8;				 	
+	pushq	%r9;				 	
+	pushq	%r10;				 
+	pushq	%r11;				 
+	pushq	%r12;				 	
+	pushq	%r13;				 
+	pushq	%r14;				 	
+	pushq	%r15;				 	
+	movq	$0x10,	%rdx;			 	
+	movq	%rdx,	%ds;			 	
+	movq	%rdx,	%es;			 
+	movq	%rsp,	%rdi			 	
+			
+	callq	system_call_function		 	////////
 
-	pushq	%rax
-	movq	%es,	%rax
-	pushq	%rax
-	movq	%ds,	%rax
-	pushq	%rax
-	xorq	%rax,	%rax
-	pushq	%rbp
-	pushq	%rdi
-	pushq	%rsi
-	pushq	%rdx
-	pushq	%rcx
-	pushq	%rbx
-	pushq	%r8
-	pushq	%r9
-	pushq	%r10
-	pushq	%r11
-	pushq	%r12
-	pushq	%r13
-	pushq	%r14
-	pushq	%r15
-
-	movq	$0x10,	%rax
-	movq	%rax,	%ds
-	movq	%rax,	%es
-
-	movq	RAX(%rsp),	%rax
-	leaq	system_call_table(%rip),	%rbx
-	callq	*(%rbx,%rax,8)
-	movq	%rax,	RAX(%rsp)
-
-ENTRY(ret_system_call)
-
-	popq	%r15
-	popq	%r14
-	popq	%r13
-	popq	%r12
-	popq	%r11
-	popq	%r10
-	popq	%r9
-	popq	%r8
-	popq	%rbx
-	popq	%rcx
-	popq	%rdx
-	popq	%rsi
-	popq	%rdi
-	popq	%rbp
-	popq	%rax
-	movq	%rax,	%ds
-	popq	%rax
-	movq	%rax,	%es
-	popq	%rax
-	addq	$0x38,	%rsp
-
-	xchgq	%rdx,	%r10
-	xchgq	%rcx,	%r11
-
-	sti
-	.byte	0x48
-	sysexit
+ENTRY(ret_system_call)						
+	movq	%rax,	0x80(%rsp)		 
+	popq	%r15				 
+	popq	%r14				 	
+	popq	%r13				 	
+	popq	%r12				 	
+	popq	%r11				 	
+	popq	%r10	
+	popq	%r9				 	
+	popq	%r8				 	
+	popq	%rbx				 	
+	popq	%rcx				 	
+	popq	%rdx				 	
+	popq	%rsi				 	
+	popq	%rdi				 	
+	popq	%rbp				 	
+	popq	%rax				 	
+	movq	%rax,	%ds			 
+	popq	%rax				 
+	movq	%rax,	%es			 
+	popq	%rax				 
+	addq	$0x38,	%rsp	
+	.byte	0x48		 
+	sysexit					 
 
 
 ENTRY(divide_error)
@@ -165,11 +168,11 @@ error_code:
 	pushq	%r12
 	pushq	%r13
 	pushq	%r14
-	pushq	%r15
-
+	pushq	%r15	
+	
 	cld
 	movq	ERRCODE(%rsp),	%rsi
-	movq	FUNC(%rsp),	%rdx
+	movq	FUNC(%rsp),	%rdx	
 
 	movq	$0x10,	%rdi
 	movq	%rdi,	%ds
@@ -180,7 +183,7 @@ error_code:
 
 	callq 	*%rdx
 
-	jmp	ret_from_exception
+	jmp	ret_from_exception	
 
 ENTRY(debug)
 	pushq	$0
@@ -191,35 +194,35 @@ ENTRY(debug)
 
 ENTRY(nmi)
 	pushq	%rax
-	cld;
-	pushq	%rax
-
+	cld;			
+	pushq	%rax;	
+	
 	pushq	%rax
 	movq	%es,	%rax
 	pushq	%rax
 	movq	%ds,	%rax
 	pushq	%rax
 	xorq	%rax,	%rax
-
-	pushq	%rbp
-	pushq	%rdi
-	pushq	%rsi
-	pushq	%rdx
-	pushq	%rcx
-	pushq	%rbx
-	pushq	%r8
-	pushq	%r9
-	pushq	%r10
-	pushq	%r11
-	pushq	%r12
-	pushq	%r13
-	pushq	%r14
-	pushq	%r15
-
-	movq	$0x10,	%rdx
-	movq	%rdx,	%ds
-	movq	%rdx,	%es
-
+	
+	pushq	%rbp;		
+	pushq	%rdi;		
+	pushq	%rsi;		
+	pushq	%rdx;		
+	pushq	%rcx;		
+	pushq	%rbx;		
+	pushq	%r8;		
+	pushq	%r9;		
+	pushq	%r10;		
+	pushq	%r11;		
+	pushq	%r12;		
+	pushq	%r13;		
+	pushq	%r14;		
+	pushq	%r15;
+	
+	movq	$0x10,	%rdx;	
+	movq	%rdx,	%ds;	
+	movq	%rdx,	%es;
+	
 	movq	$0,	%rsi
 	movq	%rsp,	%rdi
 

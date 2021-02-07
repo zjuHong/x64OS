@@ -17,6 +17,7 @@
 #include "mouse.h"
 #include "disk.h"
 #include "SMP.h"
+#include "spinlock.h"
 #include "HPET.h"
 #include "timer.h"
 
@@ -31,6 +32,7 @@ void Start_Kernel(void)
 {
 	unsigned int i;
 	char buf[512];
+	unsigned char * ptr = NULL;
 
 	memset((void*)&_bss,0,(unsigned long)&_end-(unsigned long)&_bss);
 
@@ -46,11 +48,11 @@ void Start_Kernel(void)
 	Pos.FB_addr = (int *)0xffff800003000000;
 	Pos.FB_length = boot_para_info->Graphics_Info.FrameBufferSize;
 	
-	//spin_init(&Pos.printk_lock);
+	spin_init(&Pos.printk_lock);
 	
 	load_TR(10);
 
-	set_tss64((unsigned int *)&init_tss[0],_stack_start, _stack_start, _stack_start, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
+	set_tss64(TSS64_Table,_stack_start, _stack_start, _stack_start, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
 
 	sys_vector_init();
 
@@ -67,7 +69,9 @@ void Start_Kernel(void)
 
 	color_printk(RED,BLACK,"slab init \n");
 	slab_init();
-
+	
+	ptr = (unsigned char *)kmalloc(STACK_SIZE,0) + STACK_SIZE;
+		
 	color_printk(RED,BLACK,"frame buffer init \n");
 	frame_buffer_init();
 	color_printk(WHITE,BLACK,"frame_buffer_init() is OK \n");
@@ -83,12 +87,11 @@ void Start_Kernel(void)
 	init_8259A();
 #endif
 
+	color_printk(RED,BLACK,"Schedule init \n");
+	schedule_init();
+
 	color_printk(RED,BLACK,"Soft IRQ init \n");
 	softirq_init();
-
-	color_printk(RED,BLACK,"Timer & Clock init \n");
-	timer_init();
-	HPET_init();
 
 	color_printk(RED,BLACK,"keyboard init \n");
 	keyboard_init();
@@ -96,13 +99,16 @@ void Start_Kernel(void)
 	color_printk(RED,BLACK,"mouse init \n");
 	mouse_init();
 
-	//color_printk(RED,BLACK,"disk init \n");
-	//disk_init();
-	
-	//	color_printk(RED,BLACK,"task_init \n");
-	//	task_init();
+	color_printk(RED,BLACK,"disk init \n");
+	disk_init();
 
+	color_printk(RED,BLACK,"Timer & Clock init \n");
+	timer_init();
+	HPET_init();
+
+	color_printk(RED,BLACK,"task_init \n");
 	sti();
+	task_init();
 
 	color_printk(RED,BLACK,"start while(1) \n");
 	while(1)
