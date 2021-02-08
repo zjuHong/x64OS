@@ -28,7 +28,8 @@ OLDSS	=	0xb8
 ////struct task_struct member offset
 TSK_STATE	=	0x00
 TSK_FLAGS	=	0x08
-TSK_SIGNAL	=	0x10
+TSK_PREEMPT	=	0x10
+TSK_SIGNAL	=	0x18
 
 
 RESTORE_ALL:
@@ -62,10 +63,13 @@ ret_from_exception:
 	
 ENTRY(ret_from_intr)
 	movq	$-1,	%rcx
-	testq	softirq_status(%rip),	%rcx
+	testq	softirq_status(%rip),	%rcx	////check softirq
 	jnz	softirq_handler
 	GET_CURRENT(%rbx)
-	movq	TSK_FLAGS(%rbx),	%rcx
+	movq	TSK_PREEMPT(%rbx),	%rcx		////check preempt
+	cmpq	$0,	%rcx
+	jne		RESTORE_ALL
+	movq	TSK_FLAGS(%rbx),	%rcx		////try schedule
 	testq	$2,	%rcx
 	jnz	reschedule
 	jmp	RESTORE_ALL	
@@ -73,13 +77,16 @@ ENTRY(ret_from_intr)
 softirq_handler:
 	callq	do_softirq
 	GET_CURRENT(%rbx)
-	movq	TSK_FLAGS(%rbx),	%rcx
+	movq	TSK_PREEMPT(%rbx),	%rcx		////check preempt
+	cmpq	$0,	%rcx
+	jne		RESTORE_ALL
+	movq	TSK_FLAGS(%rbx),	%rcx		////try schedule
 	testq	$2,	%rcx
 	jnz	reschedule
 	jmp	RESTORE_ALL		
 
 reschedule:
-	callq	schedule
+	callq	schedule						////do schedule
 	jmp	RESTORE_ALL
 
 
@@ -342,5 +349,4 @@ ENTRY(virtualization_exception)
 	leaq	do_virtualization_exception(%rip),	%rax
 	xchgq	%rax,	(%rsp)
 	jmp	error_code
-
 
