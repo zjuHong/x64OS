@@ -2,27 +2,6 @@
 
 #define __FAT32_H__
 
-struct Disk_Partition_Table_Entry
-{
-	unsigned char flags;
-	unsigned char start_head;
-	unsigned short  start_sector	:6,	//0~5
-			start_cylinder	:10;	//6~15
-	unsigned char type;
-	unsigned char end_head;
-	unsigned short  end_sector	:6,	//0~5
-			end_cylinder	:10;	//6~15
-	unsigned int start_LBA;
-	unsigned int sectors_limit;
-}__attribute__((packed));
-
-struct Disk_Partition_Table
-{
-	unsigned char BS_Reserved[446];
-	struct Disk_Partition_Table_Entry DPTE[4];
-	unsigned short BS_TrailSig;
-}__attribute__((packed));
-
 struct FAT32_BootSector
 {
 	unsigned char BS_jmpBoot[3];
@@ -114,8 +93,48 @@ struct FAT32_LongDirectory
 }__attribute__((packed));
 
 void DISK1_FAT32_FS_init();
-unsigned int DISK1_FAT32_read_FAT_Entry(unsigned int fat_entry);
-unsigned long DISK1_FAT32_write_FAT_Entry(unsigned int fat_entry,unsigned int value);
 
+/////////////FAT32 for VFS
+
+struct FAT32_sb_info
+{
+	unsigned long start_sector;
+	unsigned long sector_count;
+
+	long sector_per_cluster;
+	long bytes_per_cluster;
+	long bytes_per_sector;
+
+	unsigned long Data_firstsector;
+	unsigned long FAT1_firstsector;
+	unsigned long sector_per_FAT;
+	unsigned long NumFATs;
+
+	unsigned long fsinfo_sector_infat;
+	unsigned long bootsector_bk_infat;
+	
+	struct FAT32_FSInfo * fat_fsinfo;
+};
+
+struct FAT32_inode_info
+{
+	unsigned long first_cluster;
+	unsigned long dentry_location;	////dentry struct in cluster(0 is root,1 is invalid)
+	unsigned long dentry_position;	////dentry struct offset in cluster
+
+	unsigned short create_date;
+	unsigned short create_time;
+
+	unsigned short write_date;
+	unsigned short write_time;
+};
+
+unsigned int DISK1_FAT32_read_FAT_Entry(struct FAT32_sb_info * fsbi,unsigned int fat_entry);
+unsigned long DISK1_FAT32_write_FAT_Entry(struct FAT32_sb_info * fsbi,unsigned int fat_entry,unsigned int value);
+
+extern struct index_node_operations FAT32_inode_ops;
+extern struct file_operations FAT32_file_ops;
+extern struct dir_entry_operations FAT32_dentry_ops;
+extern struct super_block_operations FAT32_sb_ops;
 
 #endif

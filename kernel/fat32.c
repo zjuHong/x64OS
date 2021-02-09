@@ -2,33 +2,157 @@
 #include "disk.h"
 #include "printk.h"
 #include "lib.h"
+#include "VFS.h"
 
-struct Disk_Partition_Table DPT;
-struct FAT32_BootSector fat32_bootsector;
-struct FAT32_FSInfo fat32_fsinfo;
+struct super_block * root_sb = NULL;
 
-unsigned long FirstDataSector = 0;
-unsigned long BytesPerClus = 0;
-unsigned long FirstFAT1Sector = 0;
-unsigned long FirstFAT2Sector = 0;
-
-struct FAT32_Directory * lookup(char * name,int namelen,struct FAT32_Directory *dentry,int flags)
+struct dir_entry * path_walk(char * name,unsigned long flags)
 {
+	char * tmpname = NULL;
+	int tmpnamelen = 0;
+	struct dir_entry * parent = root_sb->root;
+	struct dir_entry * path = NULL;
+
+	while(*name == '/')
+		name++;
+
+	if(!*name)
+	{
+		return parent;
+	}
+
+	for(;;)
+	{
+		tmpname = name;
+		while(*name && (*name != '/'))
+			name++;
+		tmpnamelen = name - tmpname;
+
+		path = (struct dir_entry *)kmalloc(sizeof(struct dir_entry),0);
+		memset(path,0,sizeof(struct dir_entry));
+
+		path->name = kmalloc(tmpnamelen+1,0);
+		memset(path->name,0,tmpnamelen+1);
+		memcpy(tmpname,path->name,tmpnamelen);
+		path->name_length = tmpnamelen;
+
+		if(parent->dir_inode->inode_ops->lookup(parent->dir_inode,path) == NULL)
+		{
+			color_printk(RED,WHITE,"can not find file or dir:%s\n",path->name);
+			kfree(path->name);
+			kfree(path);
+			return NULL;
+		}
+
+		list_init(&path->child_node);
+		list_init(&path->subdirs_list);
+		path->parent = parent;
+		list_add_to_behind(&parent->subdirs_list,&path->child_node);
+
+		if(!*name)
+			goto last_component;
+		while(*name == '/')
+			name++;
+		if(!*name)
+			goto last_slash;
+
+		parent = path;
+	}
+
+last_slash:
+last_component:
+
+	if(flags & 1)
+	{
+		return parent;
+	}
+
+	return path;
+}
+
+unsigned int DISK1_FAT32_read_FAT_Entry(struct FAT32_sb_info * fsbi,unsigned int fat_entry)
+{
+	unsigned int buf[128];
+	memset(buf,0,512);
+	IDE_device_operation.transfer(ATA_READ_CMD,fsbi->FAT1_firstsector + (fat_entry >> 7),1,(unsigned char *)buf);
+	color_printk(BLUE,BLACK,"DISK1_FAT32_read_FAT_Entry fat_entry:%#018lx,%#010x\n",fat_entry,buf[fat_entry & 0x7f]);
+	return buf[fat_entry & 0x7f] & 0x0fffffff;
+}
+
+unsigned long DISK1_FAT32_write_FAT_Entry(struct FAT32_sb_info * fsbi,unsigned int fat_entry,unsigned int value)
+{
+	unsigned int buf[128];
+	int i;
+
+	memset(buf,0,512);
+	IDE_device_operation.transfer(ATA_READ_CMD,fsbi->FAT1_firstsector + (fat_entry >> 7),1,(unsigned char *)buf);
+	buf[fat_entry & 0x7f] = (buf[fat_entry & 0x7f] & 0xf0000000) | (value & 0x0fffffff);
+
+	for(i = 0;i < fsbi->NumFATs;i++)
+		IDE_device_operation.transfer(ATA_WRITE_CMD,fsbi->FAT1_firstsector + fsbi->sector_per_FAT * i + (fat_entry >> 7),1,(unsigned char *)buf);
+	return 1;	
+}
+
+
+long FAT32_open(struct index_node * inode,struct file * filp)
+{}
+
+
+long FAT32_close(struct index_node * inode,struct file * filp)
+{}
+
+
+long FAT32_read(struct file * filp,char * buf,unsigned long count,long * position)
+{}
+
+
+long FAT32_write(struct file * filp,char * buf,unsigned long count,long * position)
+{}
+
+
+long FAT32_lseek(struct file * filp,long offset,long origin)
+{}
+
+
+long FAT32_ioctl(struct index_node * inode,struct file * filp,unsigned long cmd,unsigned long arg)
+{}
+
+
+struct file_operations FAT32_file_ops = 
+{
+	.open = FAT32_open,
+	.close = FAT32_close,
+	.read = FAT32_read,
+	.write = FAT32_write,
+	.lseek = FAT32_lseek,
+	.ioctl = FAT32_ioctl,
+};
+
+long FAT32_create(struct index_node * inode,struct dir_entry * dentry,int mode)
+{}
+
+
+struct dir_entry * FAT32_lookup(struct index_node * parent_inode,struct dir_entry * dest_dentry)
+{
+	struct FAT32_inode_info * finode = parent_inode->private_index_info;
+	struct FAT32_sb_info * fsbi = parent_inode->sb->private_sb_info;
+
 	unsigned int cluster = 0;
 	unsigned long sector = 0;
-	unsigned char *buf =NULL; 
+	unsigned char * buf =NULL; 
 	int i = 0,j = 0,x = 0;
-	struct FAT32_Directory *tmpdentry = NULL;
-	struct FAT32_LongDirectory *tmpldentry = NULL;
-	struct FAT32_Directory *p = NULL;
+	struct FAT32_Directory * tmpdentry = NULL;
+	struct FAT32_LongDirectory * tmpldentry = NULL;
+	struct index_node * p = NULL;
 
-	buf = kmalloc(BytesPerClus,0);
+	buf = kmalloc(fsbi->bytes_per_cluster,0);
 
-	cluster = (dentry->DIR_FstClusHI << 16 | dentry->DIR_FstClusLO) & 0x0fffffff;
+	cluster = finode->first_cluster;
+
 next_cluster:
-	sector = FirstDataSector + (cluster - 2) * fat32_bootsector.BPB_SecPerClus;
+	sector = fsbi->Data_firstsector + (cluster - 2) * fsbi->sector_per_cluster;
 	color_printk(BLUE,BLACK,"lookup cluster:%#010x,sector:%#018lx\n",cluster,sector);
-	if(!IDE_device_operation.transfer(ATA_READ_CMD,sector,fat32_bootsector.BPB_SecPerClus,(unsigned char *)buf))
+	if(!IDE_device_operation.transfer(ATA_READ_CMD,sector,fsbi->sector_per_cluster,(unsigned char *)buf))
 	{
 		color_printk(RED,BLACK,"FAT32 FS(lookup) read disk ERROR!!!!!!!!!!\n");
 		kfree(buf);
@@ -37,7 +161,7 @@ next_cluster:
 
 	tmpdentry = (struct FAT32_Directory *)buf;
 
-	for(i = 0;i < BytesPerClus;i+= 32,tmpdentry++)
+	for(i = 0;i < fsbi->bytes_per_cluster;i+= 32,tmpdentry++)
 	{
 		if(tmpdentry->DIR_Attr == ATTR_LONG_NAME)
 			continue;
@@ -52,32 +176,29 @@ next_cluster:
 		{
 			for(x=0;x<5;x++)
 			{
-				if(j>namelen && tmpldentry->LDIR_Name1[x] == 0xffff)
+				if(j>dest_dentry->name_length && tmpldentry->LDIR_Name1[x] == 0xffff)
 					continue;
-				else if(j>namelen || tmpldentry->LDIR_Name1[x] != (unsigned short)(name[j++]))
+				else if(j>dest_dentry->name_length || tmpldentry->LDIR_Name1[x] != (unsigned short)(dest_dentry->name[j++]))
 					goto continue_cmp_fail;
 			}
 			for(x=0;x<6;x++)
 			{
-				if(j>namelen && tmpldentry->LDIR_Name2[x] == 0xffff)
+				if(j>dest_dentry->name_length && tmpldentry->LDIR_Name2[x] == 0xffff)
 					continue;
-				else if(j>namelen || tmpldentry->LDIR_Name2[x] != (unsigned short)(name[j++]))
+				else if(j>dest_dentry->name_length || tmpldentry->LDIR_Name2[x] != (unsigned short)(dest_dentry->name[j++]))
 					goto continue_cmp_fail;
 			}
 			for(x=0;x<2;x++)
 			{
-				if(j>namelen && tmpldentry->LDIR_Name3[x] == 0xffff)
+				if(j>dest_dentry->name_length && tmpldentry->LDIR_Name3[x] == 0xffff)
 					continue;
-				else if(j>namelen || tmpldentry->LDIR_Name3[x] != (unsigned short)(name[j++]))
+				else if(j>dest_dentry->name_length || tmpldentry->LDIR_Name3[x] != (unsigned short)(dest_dentry->name[j++]))
 					goto continue_cmp_fail;
 			}
 
-			if(j>=namelen)
+			if(j >= dest_dentry->name_length)
 			{
-				p = (struct FAT32_Directory *)kmalloc(sizeof(struct FAT32_Directory),0);
-				*p = *tmpdentry;
-				kfree(buf);
-				return p;
+				goto find_lookup_success;
 			}
 
 			tmpldentry --;
@@ -92,9 +213,9 @@ next_cluster:
 				case ' ':
 					if(!(tmpdentry->DIR_Attr & ATTR_DIRECTORY))
 					{
-						if(name[j]=='.')
+						if(dest_dentry->name[j]=='.')
 							continue;
-						else if(tmpdentry->DIR_Name[x] == name[j])
+						else if(tmpdentry->DIR_Name[x] == dest_dentry->name[j])
 						{
 							j++;
 							break;
@@ -104,12 +225,12 @@ next_cluster:
 					}
 					else
 					{
-						if(j < namelen && tmpdentry->DIR_Name[x] == name[j])
+						if(j < dest_dentry->name_length && tmpdentry->DIR_Name[x] == dest_dentry->name[j])
 						{
 							j++;
 							break;
 						}
-						else if(j == namelen)
+						else if(j == dest_dentry->name_length)
 							continue;
 						else
 							goto continue_cmp_fail;
@@ -118,7 +239,7 @@ next_cluster:
 				case 'A' ... 'Z':
 				case 'a' ... 'z':
 					if(tmpdentry->DIR_NTRes & LOWERCASE_BASE)
-						if(j < namelen && tmpdentry->DIR_Name[x] + 32 == name[j])
+						if(j < dest_dentry->name_length && tmpdentry->DIR_Name[x] + 32 == dest_dentry->name[j])
 						{
 							j++;
 							break;
@@ -127,7 +248,7 @@ next_cluster:
 							goto continue_cmp_fail;
 					else
 					{
-						if(j < namelen && tmpdentry->DIR_Name[x] == name[j])
+						if(j < dest_dentry->name_length && tmpdentry->DIR_Name[x] == dest_dentry->name[j])
 						{
 							j++;
 							break;
@@ -137,7 +258,7 @@ next_cluster:
 					}
 
 				case '0' ... '9':
-					if(j < namelen && tmpdentry->DIR_Name[x] == name[j])
+					if(j < dest_dentry->name_length && tmpdentry->DIR_Name[x] == dest_dentry->name[j])
 					{
 						j++;
 						break;
@@ -161,7 +282,7 @@ next_cluster:
 					case 'A' ... 'Z':
 					case 'a' ... 'z':
 						if(tmpdentry->DIR_NTRes & LOWERCASE_EXT)
-							if(tmpdentry->DIR_Name[x] + 32 == name[j])
+							if(tmpdentry->DIR_Name[x] + 32 == dest_dentry->name[j])
 							{
 								j++;
 								break;
@@ -170,7 +291,7 @@ next_cluster:
 								goto continue_cmp_fail;
 						else
 						{
-							if(tmpdentry->DIR_Name[x] == name[j])
+							if(tmpdentry->DIR_Name[x] == dest_dentry->name[j])
 							{
 								j++;
 								break;
@@ -180,7 +301,7 @@ next_cluster:
 						}
 
 					case '0' ... '9':
-						if(tmpdentry->DIR_Name[x] == name[j])
+						if(tmpdentry->DIR_Name[x] == dest_dentry->name[j])
 						{
 							j++;
 							break;
@@ -189,7 +310,7 @@ next_cluster:
 							goto continue_cmp_fail;
 
 					case ' ':
-						if(tmpdentry->DIR_Name[x] == name[j])
+						if(tmpdentry->DIR_Name[x] == dest_dentry->name[j])
 						{
 							j++;
 							break;
@@ -202,147 +323,248 @@ next_cluster:
 				}
 			}
 		}
-		p = (struct FAT32_Directory *)kmalloc(sizeof(struct FAT32_Directory),0);
-		*p = *tmpdentry;
-		kfree(buf);
-		return p;
+		goto find_lookup_success;
 
 continue_cmp_fail:;
 	}
 	
-	cluster = DISK1_FAT32_read_FAT_Entry(cluster);
+	cluster = DISK1_FAT32_read_FAT_Entry(fsbi,cluster);
 	if(cluster < 0x0ffffff7)
 		goto next_cluster;
 
 	kfree(buf);
 	return NULL;
+
+find_lookup_success:
+	p = (struct index_node *)kmalloc(sizeof(struct index_node),0);
+	memset(p,0,sizeof(struct index_node));
+	p->file_size = tmpdentry->DIR_FileSize;
+	p->blocks = (p->file_size + fsbi->bytes_per_cluster - 1)/fsbi->bytes_per_sector;
+	p->attribute = (tmpdentry->DIR_Attr & ATTR_DIRECTORY) ? FS_ATTR_DIR : FS_ATTR_FILE;
+	p->sb = parent_inode->sb;
+	p->f_ops = &FAT32_file_ops;
+	p->inode_ops = &FAT32_inode_ops;
+
+	p->private_index_info = (struct FAT32_inode_info *)kmalloc(sizeof(struct FAT32_inode_info),0);
+	memset(p->private_index_info,0,sizeof(struct FAT32_inode_info));
+	finode = p->private_index_info;
+
+	finode->first_cluster = (tmpdentry->DIR_FstClusHI<< 16 | tmpdentry->DIR_FstClusLO) & 0x0fffffff;
+	finode->dentry_location = cluster;
+	finode->dentry_position = tmpdentry - (struct FAT32_Directory *)buf;
+	finode->create_date = tmpdentry->DIR_CrtTime;
+	finode->create_time = tmpdentry->DIR_CrtDate;
+	finode->write_date = tmpdentry->DIR_WrtTime;
+	finode->write_time = tmpdentry->DIR_WrtDate;
+
+	dest_dentry->dir_inode = p;
+	kfree(buf);
+	return dest_dentry;	
 }
 
-struct FAT32_Directory * path_walk(char * name,unsigned long flags)
+
+long FAT32_mkdir(struct index_node * inode,struct dir_entry * dentry,int mode)
+{}
+
+
+long FAT32_rmdir(struct index_node * inode,struct dir_entry * dentry)
+{}
+
+long FAT32_rename(struct index_node * old_inode,struct dir_entry * old_dentry,struct index_node * new_inode,struct dir_entry * new_dentry)
+{}
+
+long FAT32_getattr(struct dir_entry * dentry,unsigned long * attr)
+{}
+
+long FAT32_setattr(struct dir_entry * dentry,unsigned long * attr)
+{}
+
+struct index_node_operations FAT32_inode_ops = 
 {
-	char * tmpname = NULL;
-	int tmpnamelen = 0;
-	struct FAT32_Directory *parent = NULL;
-	struct FAT32_Directory *path = NULL;
-	char * dentryname = NULL;
+	.create = FAT32_create,
+	.lookup = FAT32_lookup,
+	.mkdir = FAT32_mkdir,
+	.rmdir = FAT32_rmdir,
+	.rename = FAT32_rename,
+	.getattr = FAT32_getattr,
+	.setattr = FAT32_setattr,
+};
 
-	while(*name == '/')
-		name++;
 
-	if(!*name)
-		return NULL;
+//// these operation need cache and list
+long FAT32_compare(struct dir_entry * parent_dentry,char * source_filename,char * destination_filename){}
+long FAT32_hash(struct dir_entry * dentry,char * filename){}
+long FAT32_release(struct dir_entry * dentry){}
+long FAT32_iput(struct dir_entry * dentry,struct index_node * inode){}
 
-	parent = (struct FAT32_Directory *)kmalloc(sizeof(struct FAT32_Directory),0);
-	dentryname = kmalloc(PAGE_4K_SIZE,0);
-	memset(parent,0,sizeof(struct FAT32_Directory));
-	memset(dentryname,0,PAGE_4K_SIZE);
-	parent->DIR_FstClusLO = fat32_bootsector.BPB_RootClus & 0xffff;
-	parent->DIR_FstClusHI = (fat32_bootsector.BPB_RootClus >> 16) & 0x0fff;
 
-	for(;;)
+struct dir_entry_operations FAT32_dentry_ops = 
+{
+	.compare = FAT32_compare,
+	.hash = FAT32_hash,
+	.release = FAT32_release,
+	.iput = FAT32_iput,
+};
+
+
+void fat32_write_superblock(struct super_block * sb){}
+
+void fat32_put_superblock(struct super_block * sb)
+{
+	kfree(sb->private_sb_info);
+	kfree(sb->root->dir_inode->private_index_info);
+	kfree(sb->root->dir_inode);
+	kfree(sb->root);
+	kfree(sb);
+}
+
+void fat32_write_inode(struct index_node * inode)
+{
+	struct FAT32_Directory * fdentry = NULL;
+	struct FAT32_Directory * buf = NULL;
+	struct FAT32_inode_info * finode = inode->private_index_info;
+	struct FAT32_sb_info * fsbi = inode->sb->private_sb_info;
+	unsigned long sector = 0;
+
+	if(finode->dentry_location == 0)
 	{
-		tmpname = name;
-		while(*name && (*name != '/'))
-			name++;
-		tmpnamelen = name - tmpname;
-		memcpy(tmpname,dentryname,tmpnamelen);
-		dentryname[tmpnamelen] = '\0';
-
-		path = lookup(dentryname,tmpnamelen,parent,flags);
-		if(path == NULL)
-		{
-			color_printk(RED,WHITE,"can not find file or dir:%s\n",dentryname);
-			kfree(dentryname);
-			kfree(parent);
-			return NULL;
-		}
-
-		if(!*name)
-			goto last_component;
-		while(*name == '/')
-			name++;
-		if(!*name)
-			goto last_slash;
-
-		*parent = *path;
-		kfree(path);
+		color_printk(RED,BLACK,"FS ERROR:write root inode!\n");	
+		return ;
 	}
 
-last_slash:
-last_component:
-	if(flags & 1)
-	{
-		kfree(dentryname);
-		kfree(path);
-		return parent;
-	}
+	sector = fsbi->Data_firstsector + (finode->dentry_location - 2) * fsbi->sector_per_cluster;
+	buf = (struct FAT32_Directory *)kmalloc(fsbi->bytes_per_cluster,0);
+	memset(buf,0,fsbi->bytes_per_cluster);
+	IDE_device_operation.transfer(ATA_READ_CMD,sector,fsbi->sector_per_cluster,(unsigned char *)buf);
+	fdentry = buf+finode->dentry_position;
 
-	kfree(dentryname);
-	kfree(parent);
-	return path;
+	////alert fat32 dentry data
+	fdentry->DIR_FileSize = inode->file_size;
+	fdentry->DIR_FstClusLO = finode->first_cluster & 0xffff;
+	fdentry->DIR_FstClusHI = (fdentry->DIR_FstClusHI & 0xf000) | (finode->first_cluster >> 16);
 
+	IDE_device_operation.transfer(ATA_WRITE_CMD,sector,fsbi->sector_per_cluster,(unsigned char *)buf);
+	kfree(buf);
 }
 
-unsigned int DISK1_FAT32_read_FAT_Entry(unsigned int fat_entry)
+struct super_block_operations FAT32_sb_ops = 
 {
-	unsigned int buf[128];
-	memset(buf,0,512);
-	IDE_device_operation.transfer(ATA_READ_CMD,FirstFAT1Sector + (fat_entry >> 7),1,(unsigned char *)buf);
-	color_printk(BLUE,BLACK,"DISK1_FAT32_read_FAT_Entry fat_entry:%#018lx,%#010x\n",fat_entry,buf[fat_entry & 0x7f]);
-	return buf[fat_entry & 0x7f] & 0x0fffffff;
-}
+	.write_superblock = fat32_write_superblock,
+	.put_superblock = fat32_put_superblock,
 
-unsigned long DISK1_FAT32_write_FAT_Entry(unsigned int fat_entry,unsigned int value)
+	.write_inode = fat32_write_inode,
+};
+
+struct super_block * fat32_read_superblock(struct Disk_Partition_Table_Entry * DPTE,void * buf)
 {
-	unsigned int buf[128];
-	memset(buf,0,512);
-	IDE_device_operation.transfer(ATA_READ_CMD,FirstFAT1Sector + (fat_entry >> 7),1,(unsigned char *)buf);
-	buf[fat_entry & 0x7f] = (buf[fat_entry & 0x7f] & 0xf0000000) | (value & 0x0fffffff);
-	IDE_device_operation.transfer(ATA_WRITE_CMD,FirstFAT1Sector + (fat_entry >> 7),1,(unsigned char *)buf);
-	IDE_device_operation.transfer(ATA_WRITE_CMD,FirstFAT2Sector + (fat_entry >> 7),1,(unsigned char *)buf);
-	return 1;	
+	struct super_block * sbp = NULL;
+	struct FAT32_inode_info * finode = NULL;
+	struct FAT32_BootSector * fbs = NULL;
+	struct FAT32_sb_info * fsbi = NULL;
+
+	////super block
+	sbp = (struct super_block *)kmalloc(sizeof(struct super_block),0);
+	memset(sbp,0,sizeof(struct super_block));
+
+	sbp->sb_ops = &FAT32_sb_ops;
+	sbp->private_sb_info = (struct FAT32_sb_info *)kmalloc(sizeof(struct FAT32_sb_info),0);
+	memset(sbp->private_sb_info,0,sizeof(struct FAT32_sb_info));
+
+	////fat32 boot sector
+	fbs = (struct FAT32_BootSector *)buf;
+	fsbi = sbp->private_sb_info;	
+	fsbi->start_sector = DPTE->start_LBA;
+	fsbi->sector_count = DPTE->sectors_limit;
+	fsbi->sector_per_cluster = fbs->BPB_SecPerClus;
+	fsbi->bytes_per_cluster = fbs->BPB_SecPerClus * fbs->BPB_BytesPerSec;
+	fsbi->bytes_per_sector = fbs->BPB_BytesPerSec;
+	fsbi->Data_firstsector = DPTE->start_LBA + fbs->BPB_RsvdSecCnt + fbs->BPB_FATSz32 * fbs->BPB_NumFATs;
+	fsbi->FAT1_firstsector = DPTE->start_LBA + fbs->BPB_RsvdSecCnt;
+	fsbi->sector_per_FAT = fbs->BPB_FATSz32;
+	fsbi->NumFATs = fbs->BPB_NumFATs;
+	fsbi->fsinfo_sector_infat = fbs->BPB_FSInfo;
+	fsbi->bootsector_bk_infat = fbs->BPB_BkBootSec;	
+	
+	color_printk(BLUE,BLACK,"FAT32 Boot Sector\n\tBPB_FSInfo:%#018lx\n\tBPB_BkBootSec:%#018lx\n\tBPB_TotSec32:%#018lx\n",fbs->BPB_FSInfo,fbs->BPB_BkBootSec,fbs->BPB_TotSec32);
+	
+	////fat32 fsinfo sector
+	
+	fsbi->fat_fsinfo = (struct FAT32_FSInfo *)kmalloc(sizeof(struct FAT32_FSInfo),0);
+	memset(fsbi->fat_fsinfo,0,512);
+	IDE_device_operation.transfer(ATA_READ_CMD,DPTE->start_LBA + fbs->BPB_FSInfo,1,(unsigned char *)fsbi->fat_fsinfo);
+	
+	color_printk(BLUE,BLACK,"FAT32 FSInfo\n\tFSI_LeadSig:%#018lx\n\tFSI_StrucSig:%#018lx\n\tFSI_Free_Count:%#018lx\n",fsbi->fat_fsinfo->FSI_LeadSig,fsbi->fat_fsinfo->FSI_StrucSig,fsbi->fat_fsinfo->FSI_Free_Count);
+	
+	////directory entry
+	sbp->root = (struct dir_entry *)kmalloc(sizeof(struct dir_entry),0);
+	memset(sbp->root,0,sizeof(struct dir_entry));
+
+	list_init(&sbp->root->child_node);
+	list_init(&sbp->root->subdirs_list);
+	sbp->root->parent = sbp->root;
+	sbp->root->dir_ops = &FAT32_dentry_ops;
+	sbp->root->name = (char *)kmalloc(2,0);
+	sbp->root->name[0] = '/';
+	sbp->root->name_length = 1;
+
+	////index node
+	sbp->root->dir_inode = (struct index_node *)kmalloc(sizeof(struct index_node),0);
+	memset(sbp->root->dir_inode,0,sizeof(struct index_node));
+	sbp->root->dir_inode->inode_ops = &FAT32_inode_ops;
+	sbp->root->dir_inode->f_ops = &FAT32_file_ops;
+	sbp->root->dir_inode->file_size = 0;
+	sbp->root->dir_inode->blocks = (sbp->root->dir_inode->file_size + fsbi->bytes_per_cluster - 1)/fsbi->bytes_per_sector;
+	sbp->root->dir_inode->attribute = FS_ATTR_DIR;
+	sbp->root->dir_inode->sb = sbp;
+
+	////fat32 root inode
+	sbp->root->dir_inode->private_index_info = (struct FAT32_inode_info *)kmalloc(sizeof(struct FAT32_inode_info),0);
+	memset(sbp->root->dir_inode->private_index_info,0,sizeof(struct FAT32_inode_info));
+	finode = (struct FAT32_inode_info *)sbp->root->dir_inode->private_index_info;
+	finode->first_cluster = fbs->BPB_RootClus;
+	finode->dentry_location = 0;
+	finode->dentry_position = 0; 
+	finode->create_date = 0;
+	finode->create_time = 0;
+	finode->write_date = 0;
+	finode->write_time = 0;
+
+	return sbp;
 }
 
+
+struct file_system_type FAT32_fs_type=
+{
+	.name = "FAT32",
+	.fs_flags = 0,
+	.read_superblock = fat32_read_superblock,
+	.next = NULL,
+};
 
 void DISK1_FAT32_FS_init()
 {
 	int i;
 	unsigned char buf[512];
-	struct FAT32_Directory * dentry = NULL;
+	struct dir_entry * dentry = NULL;
+	struct Disk_Partition_Table DPT = {0};
+
+	register_filesystem(&FAT32_fs_type);
 	
 	memset(buf,0,512);
 	IDE_device_operation.transfer(ATA_READ_CMD,0x0,1,(unsigned char *)buf);
 	DPT = *(struct Disk_Partition_Table *)buf;
-//	for(i = 0 ;i < 512 ; i++)
-//		color_printk(PURPLE,WHITE,"%02x",buf[i]);
 	color_printk(BLUE,BLACK,"DPTE[0] start_LBA:%#018lx\ttype:%#018lx\n",DPT.DPTE[0].start_LBA,DPT.DPTE[0].type);
 
 	memset(buf,0,512);
 	IDE_device_operation.transfer(ATA_READ_CMD,DPT.DPTE[0].start_LBA,1,(unsigned char *)buf);
-	fat32_bootsector = *(struct FAT32_BootSector *)buf;
-//	for(i = 0 ;i < 512 ; i++)
-//		color_printk(PURPLE,WHITE,"%02x",buf[i]);	
-	color_printk(BLUE,BLACK,"FAT32 Boot Sector\n\tBPB_FSInfo:%#018lx\n\tBPB_BkBootSec:%#018lx\n\tBPB_TotSec32:%#018lx\n",fat32_bootsector.BPB_FSInfo,fat32_bootsector.BPB_BkBootSec,fat32_bootsector.BPB_TotSec32);
-	
-	memset(buf,0,512);
-	IDE_device_operation.transfer(ATA_READ_CMD,DPT.DPTE[0].start_LBA + fat32_bootsector.BPB_FSInfo,1,(unsigned char *)buf);
-	fat32_fsinfo = *(struct FAT32_FSInfo *)buf;
-//	for(i = 0 ;i < 512 ; i++)
-//		color_printk(PURPLE,WHITE,"%02x",buf[i]);	
-	color_printk(BLUE,BLACK,"FAT32 FSInfo\n\tFSI_LeadSig:%#018lx\n\tFSI_StrucSig:%#018lx\n\tFSI_Free_Count:%#018lx\n",fat32_fsinfo.FSI_LeadSig,fat32_fsinfo.FSI_StrucSig,fat32_fsinfo.FSI_Free_Count);
 
-	FirstDataSector = DPT.DPTE[0].start_LBA + fat32_bootsector.BPB_RsvdSecCnt + fat32_bootsector.BPB_FATSz32 * fat32_bootsector.BPB_NumFATs;
-	FirstFAT1Sector = DPT.DPTE[0].start_LBA + fat32_bootsector.BPB_RsvdSecCnt;
-	FirstFAT2Sector = FirstFAT1Sector + fat32_bootsector.BPB_FATSz32;
-	BytesPerClus = fat32_bootsector.BPB_SecPerClus * fat32_bootsector.BPB_BytesPerSec;
-
+	root_sb = mount_fs("FAT32",&DPT.DPTE[0],buf);	//not dev node
 
 	dentry = path_walk("/JIOL123Llliwos/89AIOlejk.TXT",0);
 	if(dentry != NULL)
-		color_printk(BLUE,BLACK,"Find 89AIOlejk.TXT\nDIR_FstClusHI:%#018lx\tDIR_FstClusLO:%#018lx\tDIR_FileSize:%#018lx\n",dentry->DIR_FstClusHI,dentry->DIR_FstClusLO,dentry->DIR_FileSize);
+		color_printk(BLUE,BLACK,"Find 89AIOlejk.TXT\nDIR_FirstCluster:%#018lx\tDIR_FileSize:%#018lx\n",((struct FAT32_inode_info *)(dentry->dir_inode->private_index_info))->first_cluster,dentry->dir_inode->file_size);
 	else
 		color_printk(BLUE,BLACK,"Can`t find file\n");
 }
-
 
 
