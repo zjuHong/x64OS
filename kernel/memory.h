@@ -3,7 +3,6 @@
 #define __MEMORY_H__
 
 #include "UEFI_boot_param_info.h"
-#include "printk.h"
 #include "lib.h"
 
 //	8Bytes per cell

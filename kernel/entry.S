@@ -122,7 +122,7 @@ ENTRY(system_call)
 			
 	callq	system_call_function		 	////////
 
-ENTRY(ret_system_call)						
+ENTRY(ret_system_call)	
 	movq	%rax,	0x80(%rsp)		 
 	popq	%r15				 
 	popq	%r14				 	
@@ -143,7 +143,8 @@ ENTRY(ret_system_call)
 	popq	%rax				 
 	movq	%rax,	%es			 
 	popq	%rax				 
-	addq	$0x38,	%rsp	
+	addq	$0x38,	%rsp
+	sti	
 	.byte	0x48		 
 	sysexit					 
 
@@ -349,4 +350,5 @@ ENTRY(virtualization_exception)
 	leaq	do_virtualization_exception(%rip),	%rax
 	xchgq	%rax,	(%rsp)
 	jmp	error_code
+
 

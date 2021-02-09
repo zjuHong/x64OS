@@ -1,6 +1,8 @@
 #ifndef __SPINLOCK_H__
 #define __SPINLOCK_H__
 
+#include "preempt.h"
+
 /*
 
 */
@@ -25,6 +27,7 @@ inline void spin_init(spinlock_T * lock)
 
 inline void spin_lock(spinlock_T * lock)
 {
+	preempt_disable();
 	__asm__	__volatile__	(	"1:	\n\t"
 					"lock	decq	%0	\n\t"
 					"jns	3f	\n\t"
@@ -51,17 +54,22 @@ inline void spin_unlock(spinlock_T * lock)
 					:
 					:"memory"
 				);
+	preempt_enable();
 }
 
 inline long spin_trylock(spinlock_T * lock)
 {
 	unsigned long tmp_value = 0;
+	preempt_disable();
 	__asm__	__volatile__	(	"xchgq	%0,	%1	\n\t"
 				:"=q"(tmp_value),"=m"(lock->lock)
 				:"0"(0)
 				:"memory"
 			);
+	if(!tmp_value)
+		preempt_enable();
 	return tmp_value;
 }
 
 #endif
+

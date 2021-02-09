@@ -1,19 +1,28 @@
 #include "disk.h"
-#include "interrupt.h"
 #include "APIC.h"
 #include "memory.h"
 #include "printk.h"
 #include "lib.h"
 #include "block.h"
+#include "semaphore.h"
 
 static int disk_flags = 0;
 
-void end_request()
+struct request_queue disk_request;
+
+struct block_device_operation IDE_device_operation;
+
+void end_request(struct block_buffer_node * node)
 {
+	if(node == NULL)
+		color_printk(RED,BLACK,"end_request error\n");
+
+	node->wait_queue.tsk->state = TASK_RUNNING;
+	insert_task_queue(node->wait_queue.tsk);
+	node->wait_queue.tsk->flags |= NEED_SCHEDULE;
+
 	kfree((unsigned long *)disk_request.in_using);
 	disk_request.in_using = NULL;
-
-	disk_flags = 0;
 
 	if(disk_request.block_request_count)
 		cmd_out();
@@ -21,14 +30,15 @@ void end_request()
 
 void add_request(struct block_buffer_node * node)
 {
-	list_add_to_before(&disk_request.queue_list,&node->list);
+	list_add_to_before(&disk_request.wait_queue_list.wait_list,&node->wait_queue.wait_list);
 	disk_request.block_request_count++;
 }
 
 long cmd_out()
 {
-	struct block_buffer_node * node = disk_request.in_using = container_of(list_next(&disk_request.queue_list),struct block_buffer_node,list);
-	list_del(&disk_request.in_using->list);
+	wait_queue_T *wait_queue_tmp = container_of(list_next(&disk_request.wait_queue_list.wait_list),wait_queue_T,wait_list);
+	struct block_buffer_node * node = disk_request.in_using = container_of(wait_queue_tmp,struct block_buffer_node,wait_queue);
+	list_del(&disk_request.in_using->wait_queue.wait_list);
 	disk_request.block_request_count--;
 
 	while(io_in8(PORT_DISK0_STATUS_CMD) & DISK_STATUS_BUSY)
@@ -112,15 +122,34 @@ void read_handler(unsigned long nr, unsigned long parameter)
 	else
 		port_insw(PORT_DISK0_DATA,node->buffer,256);
 
-	end_request();
+	node->count--;
+	if(node->count)
+	{
+		node->buffer += 512;
+		return;
+	}
+
+	end_request(node);
 }
 
 void write_handler(unsigned long nr, unsigned long parameter)
 {
+	struct block_buffer_node * node = ((struct request_queue *)parameter)->in_using;
+
 	if(io_in8(PORT_DISK0_STATUS_CMD) & DISK_STATUS_ERROR)
 		color_printk(RED,BLACK,"write_handler:%#010x\n",io_in8(PORT_DISK0_ERR_FEATURE));
 
-	end_request();
+	node->count--;
+	if(node->count)
+	{
+		node->buffer += 512;
+		while(!(io_in8(PORT_DISK0_STATUS_CMD) & DISK_STATUS_REQ))
+			nop();
+		port_outsw(PORT_DISK0_DATA,node->buffer,256);
+		return;
+	}
+
+	end_request(node);
 }
 
 void other_handler(unsigned long nr, unsigned long parameter)
@@ -132,13 +161,13 @@ void other_handler(unsigned long nr, unsigned long parameter)
 	else
 		port_insw(PORT_DISK0_DATA,node->buffer,256);
 
-	end_request();
+	end_request(node);
 }
 
 struct block_buffer_node * make_request(long cmd,unsigned long blocks,long count,unsigned char * buffer)
 {
 	struct block_buffer_node * node = (struct block_buffer_node *)kmalloc(sizeof(struct block_buffer_node),0);
-	list_init(&node->list);
+	wait_queue_init(&node->wait_queue,current);
 
 	switch(cmd)
 	{
@@ -175,9 +204,8 @@ void submit(struct block_buffer_node * node)
 
 void wait_for_finish()
 {
-	disk_flags = 1;
-	while(disk_flags)
-		nop();
+	current->state = TASK_UNINTERRUPTIBLE;
+	schedule();
 }
 
 long IDE_open()
@@ -244,6 +272,7 @@ hw_int_controller disk_int_controller =
 void disk_handler(unsigned long nr, unsigned long parameter, struct pt_regs * regs)
 {
 	struct block_buffer_node * node = ((struct request_queue *)parameter)->in_using;
+	color_printk(BLACK,WHITE,"disk_handler\n");
 	node->end_handler(nr,parameter);
 }
 
@@ -265,18 +294,17 @@ void disk_init()
 	entry.destination.physical.phy_dest = 0;
 	entry.destination.physical.reserved2 = 0;
 
-	register_irq(0x2e, &entry , &disk_handler, (unsigned long)&disk_request, &disk_int_controller, "disk0");
+	register_irq(0x2e, &entry , &disk_handler, (unsigned long)&disk_request, &disk_int_controller, "DISK0");
 
 	io_out8(PORT_DISK0_ALT_STA_CTL,0);
 	
-	list_init(&disk_request.queue_list);
+	wait_queue_init(&disk_request.wait_queue_list,NULL);
 	disk_request.in_using = NULL;
 	disk_request.block_request_count = 0;
-	
-	disk_flags = 0;
 }
 
 void disk_exit()
 {
 	unregister_irq(0x2e);
 }
+

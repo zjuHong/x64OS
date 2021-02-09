@@ -85,7 +85,9 @@ struct task_struct
 {
 	volatile long state;
 	unsigned long flags;
+	long preempt_count;
 	long signal;
+	long cpu_id;		//CPU ID
 
 	struct mm_struct *mm;
 	struct thread_struct *thread;
@@ -112,14 +114,15 @@ union task_union
 	unsigned long stack[STACK_SIZE / sizeof(unsigned long)];
 }__attribute__((aligned (8)));	//8Bytes align
 
-struct mm_struct init_mm;
-struct thread_struct init_thread;
+
 
 #define INIT_TASK(tsk)	\
 {			\
 	.state = TASK_UNINTERRUPTIBLE,		\
 	.flags = PF_KTHREAD,		\
+	.preempt_count = 0,		\
 	.signal = 0,		\
+	.cpu_id = 0,		\
 	.mm = &init_mm,			\
 	.thread = &init_thread,		\
 	.addr_limit = 0xffff800000000000,	\
@@ -127,23 +130,6 @@ struct thread_struct init_thread;
 	.priority = 2,		\
 	.vrun_time = 0		\
 }
-
-union task_union init_task_union __attribute__((__section__ (".data.init_task"))) = {INIT_TASK(init_task_union.task)};
-
-struct task_struct *init_task[NR_CPUS] = {&init_task_union.task,0};
-
-struct mm_struct init_mm = {0};
-
-struct thread_struct init_thread = 
-{
-	.rsp0 = (unsigned long)(init_task_union.stack + STACK_SIZE / sizeof(unsigned long)),
-	.rsp = (unsigned long)(init_task_union.stack + STACK_SIZE / sizeof(unsigned long)),
-	.fs = KERNEL_DS,
-	.gs = KERNEL_DS,
-	.cr2 = 0,
-	.trap_nr = 0,
-	.error_code = 0
-};
 
 /*
 
@@ -186,7 +172,6 @@ struct tss_struct
 	.iomapbaseaddr = 0	\
 }
 
-struct tss_struct init_tss[NR_CPUS] = { [0 ... NR_CPUS-1] = INIT_TSS };
 
 /*
 
@@ -241,25 +226,22 @@ void task_init();
 
 typedef unsigned long (* system_call_t)(struct pt_regs * regs);
 
-unsigned long no_system_call(struct pt_regs * regs)
-{
-	color_printk(RED,BLACK,"no_system_call is calling,NR:%#04x\n",regs->rax);
-	return -1;
-}
+unsigned long no_system_call(struct pt_regs * regs);
 
-unsigned long sys_printf(struct pt_regs * regs)
-{
-	color_printk(BLACK,WHITE,(char *)regs->rdi);
-	return 1;
-}
+unsigned long sys_printf(struct pt_regs * regs);
 
-system_call_t system_call_table[MAX_SYSTEM_CALL_NR] = 
-{
-	[0] = no_system_call,
-	[1] = sys_printf,
-	[2 ... MAX_SYSTEM_CALL_NR-1] = no_system_call
-};
+extern void ret_system_call(void);
+extern void system_call(void);
 
+extern system_call_t system_call_table[MAX_SYSTEM_CALL_NR];
+
+
+extern struct task_struct *init_task[NR_CPUS];
+extern union task_union init_task_union;
+extern struct mm_struct init_mm;
+extern struct thread_struct init_thread;
+
+extern struct tss_struct init_tss[NR_CPUS];
 
 #endif
 

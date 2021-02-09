@@ -21,6 +21,10 @@
 #include "HPET.h"
 #include "timer.h"
 
+#include "atomic.h"
+#include "semaphore.h"
+#include "fat32.h"
+
 /*
 	static var 
 */
@@ -107,8 +111,8 @@ void Start_Kernel(void)
 	HPET_init();
 
 	color_printk(RED,BLACK,"task_init \n");
-	sti();
 	task_init();
+	sti();
 
 	color_printk(RED,BLACK,"start while(1) \n");
 	while(1)

@@ -372,39 +372,13 @@ void APIC_IOAPIC_init()
 
 void do_IRQ(struct pt_regs * regs,unsigned long nr)	//regs:rsp,nr
 {
-	switch(nr & 0x80)
-	{
-	case 0x00:
-	
-		{
-			irq_desc_T * irq = &interrupt_desc[nr - 32];
+	irq_desc_T * irq = &interrupt_desc[nr - 32];
 
-			if(irq->handler != NULL)
-				irq->handler(nr,irq->parameter,regs);
+	if(irq->handler != NULL)
+		irq->handler(nr,irq->parameter,regs);
 
-			if(irq->controller != NULL && irq->controller->ack != NULL)
-				irq->controller->ack(nr);
-		}
-		break;
-	
-	case 0x80:
-	
-//		color_printk(RED,BLACK,"SMP IPI:%d,CPU:%d\n",nr,SMP_cpu_id());
-		Local_APIC_edge_level_ack(nr);
-		{
-			irq_desc_T * irq = &SMP_IPI_desc[nr - 200];
-
-			if(irq->handler != NULL)
-				irq->handler(nr,irq->parameter,regs);
-		}
-
-		break;
-
-	default:
-	
-		color_printk(RED,BLACK,"do_IRQ receive:%d\n",nr);
-		break;
-	}
+	if(irq->controller != NULL && irq->controller->ack != NULL)
+		irq->controller->ack(nr);
 }
 
 

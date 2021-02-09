@@ -1,16 +1,57 @@
 #include "task.h"
 #include "ptrace.h"
-#include "printk.h"
 #include "lib.h"
 #include "memory.h"
 #include "linkage.h"
 #include "gate.h"
 #include "schedule.h"
+#include "printk.h"
+#include "SMP.h"
 
 
-extern void ret_system_call(void);
-extern void system_call(void);
+struct mm_struct init_mm = {0};
 
+struct thread_struct init_thread = 
+{
+	.rsp0 = (unsigned long)(init_task_union.stack + STACK_SIZE / sizeof(unsigned long)),
+	.rsp = (unsigned long)(init_task_union.stack + STACK_SIZE / sizeof(unsigned long)),
+	.fs = KERNEL_DS,
+	.gs = KERNEL_DS,
+	.cr2 = 0,
+	.trap_nr = 0,
+	.error_code = 0
+};
+
+
+union task_union init_task_union __attribute__((__section__ (".data.init_task"))) = {INIT_TASK(init_task_union.task)};
+
+struct task_struct *init_task[NR_CPUS] = {&init_task_union.task,0};
+
+
+struct tss_struct init_tss[NR_CPUS] = { [0 ... NR_CPUS-1] = INIT_TSS };
+
+system_call_t system_call_table[MAX_SYSTEM_CALL_NR] = 
+{
+	[0] = no_system_call,
+	[1] = sys_printf,
+	[2 ... MAX_SYSTEM_CALL_NR-1] = no_system_call
+};
+
+unsigned long no_system_call(struct pt_regs * regs)
+{
+	color_printk(RED,BLACK,"no_system_call is calling,NR:%#04x\n",regs->rax);
+	return -1;
+}
+
+unsigned long sys_printf(struct pt_regs * regs)
+{
+	color_printk(BLACK,WHITE,(char *)regs->rdi);
+
+	color_printk(RED,BLACK,"FAT32 init \n");
+	DISK1_FAT32_FS_init();
+
+	return 1;
+}
 
 void user_level_function()
 {
@@ -26,7 +67,8 @@ void user_level_function()
 
 //	color_printk(RED,BLACK,"user_level_function task called sysenter,ret:%ld\n",ret);
 
-	while(1);
+	while(1)
+		;
 }
 
 
@@ -47,12 +89,10 @@ unsigned long do_execve(struct pt_regs * regs)
 	tmp = Phy_To_Virt((unsigned long *)((unsigned long)Get_gdt() & (~ 0xfffUL)) + ((addr >> PAGE_GDT_SHIFT) & 0x1ff));
 
 	virtual = kmalloc(PAGE_4K_SIZE,0);
-	memset(virtual,0,PAGE_4K_SIZE);
 	set_mpl4t(tmp,mk_mpl4t(Virt_To_Phy(virtual),PAGE_USER_GDT));
 
 	tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((addr >> PAGE_1G_SHIFT) & 0x1ff));
 	virtual = kmalloc(PAGE_4K_SIZE,0);
-	memset(virtual,0,PAGE_4K_SIZE);
 	set_pdpt(tmp,mk_pdpt(Virt_To_Phy(virtual),PAGE_USER_Dir));
 
 	tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((addr >> PAGE_2M_SHIFT) & 0x1ff));
@@ -112,7 +152,9 @@ unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned
 	list_init(&tsk->list);
 
 	tsk->priority = 2;
-	tsk->pid++;	
+	tsk->pid++;
+	tsk->preempt_count = 0;
+	tsk->cpu_id = SMP_cpu_id();
 	tsk->state = TASK_UNINTERRUPTIBLE;
 
 	thd = (struct thread_struct *)(tsk + 1);
@@ -205,10 +247,10 @@ int kernel_thread(unsigned long (* fn)(unsigned long), unsigned long arg, unsign
 
 inline void __switch_to(struct task_struct *prev,struct task_struct *next)
 {
+	unsigned int color = 0;
 
-	init_tss[0].rsp0 = next->thread->rsp0;
-
-	set_tss64(TSS64_Table,init_tss[0].rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
+	init_tss[SMP_cpu_id()].rsp0 = next->thread->rsp0;
+//	init_tss[0].rsp0 = next->thread->rsp0;
 
 	__asm__ __volatile__("movq	%%fs,	%0 \n\t":"=a"(prev->thread->fs));
 	__asm__ __volatile__("movq	%%gs,	%0 \n\t":"=a"(prev->thread->gs));
@@ -218,10 +260,16 @@ inline void __switch_to(struct task_struct *prev,struct task_struct *next)
 
 	wrmsr(0x175,next->thread->rsp0);
 
-	color_printk(WHITE,BLACK,"prev->thread->rsp0:%#018lx\t",prev->thread->rsp0);
-	color_printk(WHITE,BLACK,"prev->thread->rsp :%#018lx\n",prev->thread->rsp);
-	color_printk(WHITE,BLACK,"next->thread->rsp0:%#018lx\t",next->thread->rsp0);
-	color_printk(WHITE,BLACK,"next->thread->rsp :%#018lx\n",next->thread->rsp);
+	if(SMP_cpu_id() == 0)
+		color = WHITE;
+	else
+		color = YELLOW;
+
+	color_printk(color,BLACK,"prev->thread->rsp0:%#018lx\t",prev->thread->rsp0);
+	color_printk(color,BLACK,"prev->thread->rsp :%#018lx\n",prev->thread->rsp);
+	color_printk(color,BLACK,"next->thread->rsp0:%#018lx\t",next->thread->rsp0);
+	color_printk(color,BLACK,"next->thread->rsp :%#018lx\n",next->thread->rsp);
+//	color_printk(color,BLACK,"CPUID:%#018lx\n",SMP_cpu_id());
 }
 
 /*
@@ -230,8 +278,6 @@ inline void __switch_to(struct task_struct *prev,struct task_struct *next)
 
 void task_init()
 {
-	struct task_struct *tmp = NULL;
-
 	init_mm.pgd = (pml4t_t *)Get_gdt();
 
 	init_mm.start_code = memory_management_struct.start_code;
@@ -253,18 +299,17 @@ void task_init()
 	wrmsr(0x176,(unsigned long)system_call);
 	
 //	init_thread,init_tss
-	set_tss64(TSS64_Table,init_thread.rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
+//	set_tss64(TSS64_Table,init_thread.rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
 
-	init_tss[0].rsp0 = init_thread.rsp0;
+	init_tss[SMP_cpu_id()].rsp0 = init_thread.rsp0;
 
 	list_init(&init_task_union.task.list);
 
 	kernel_thread(init,10,CLONE_FS | CLONE_FILES | CLONE_SIGNAL);
 
+	init_task_union.task.preempt_count = 0;
 	init_task_union.task.state = TASK_RUNNING;
-
-//	tmp = container_of(list_next(&task_schedule.task_queue.list),struct task_struct,list);
-//	switch_to(current,tmp);
+	init_task_union.task.cpu_id = 0;
 }
 
 
