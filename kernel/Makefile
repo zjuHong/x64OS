@@ -7,8 +7,8 @@ PIC := APIC
 all: system
 	objcopy -I elf64-x86-64 -S -R ".eh_frame" -R ".comment" -O binary system kernel.bin
 
-system:	head.o entry.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o cpu.o keyboard.o mouse.o disk.o SMP.o time.o HPET.o softirq.o timer.o schedule.o fat32.o VFS.o
-	ld -b elf64-x86-64 -z muldefs -o system head.o entry.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o cpu.o keyboard.o mouse.o disk.o SMP.o time.o HPET.o softirq.o timer.o schedule.o fat32.o VFS.o -T Kernel.lds 
+system:	head.o entry.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o cpu.o keyboard.o mouse.o disk.o SMP.o time.o HPET.o softirq.o timer.o schedule.o fat32.o VFS.o sys.o syscalls.o
+	ld -b elf64-x86-64 -z muldefs -o system head.o entry.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o cpu.o keyboard.o mouse.o disk.o SMP.o time.o HPET.o softirq.o timer.o schedule.o fat32.o VFS.o sys.o syscalls.o -T Kernel.lds 
 
 
 head.o:	head.S
@@ -76,10 +76,16 @@ schedule.o: schedule.c
 	gcc-4.8  $(CFLAGS) -c schedule.c
 
 fat32.o: fat32.c
-	gcc  $(CFLAGS) -c fat32.c
+	gcc-4.8  $(CFLAGS) -c fat32.c
 
 VFS.o: VFS.c
-	gcc  $(CFLAGS) -c VFS.c
+	gcc-4.8  $(CFLAGS) -c VFS.c
+
+sys.o: sys.c
+	gcc-4.8  $(CFLAGS) -c sys.c
+
+syscalls.o: syscalls.c
+	gcc-4.8  $(CFLAGS) -c syscalls.c
 
 clean:
 	rm -rf *.o *.s~ *.s *.S~ *.c~ *.h~ system  Makefile~ Kernel.lds~ kernel.bin 

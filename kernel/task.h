@@ -6,6 +6,7 @@
 #include "cpu.h"
 #include "lib.h"
 #include "ptrace.h"
+#include "VFS.h"
 
 #define KERNEL_CS 	(0x08)
 #define	KERNEL_DS 	(0x10)
@@ -55,7 +56,7 @@ struct mm_struct
 	unsigned long start_data,end_data;
 	unsigned long start_rodata,end_rodata;
 	unsigned long start_brk,end_brk;
-	unsigned long start_stack;	
+	unsigned long start_stack;
 };
 
 /*
@@ -81,6 +82,8 @@ struct thread_struct
 
 */
 
+#define TASK_FILE_MAX	10
+
 struct task_struct
 {
 	volatile long state;
@@ -99,13 +102,14 @@ struct task_struct
 	long pid;
 	long priority;
 	long vrun_time;
+
+	struct file * file_struct[TASK_FILE_MAX];
 };
 
 ///////struct task_struct->flags:
 
 #define PF_KTHREAD	(1UL << 0)
 #define NEED_SCHEDULE	(1UL << 1)
-
 
 
 union task_union
@@ -125,10 +129,11 @@ union task_union
 	.cpu_id = 0,		\
 	.mm = &init_mm,			\
 	.thread = &init_thread,		\
-	.addr_limit = 0xffff800000000000,	\
+	.addr_limit = 0xffffffffffffffff,	\
 	.pid = 0,			\
 	.priority = 2,		\
-	.vrun_time = 0		\
+	.vrun_time = 0,		\
+	.file_struct = {0}	\
 }
 
 /*
@@ -220,21 +225,13 @@ do{							\
 */
 
 unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned long stack_start, unsigned long stack_size);
+unsigned long do_execve(struct pt_regs * regs);
+unsigned long do_exit(unsigned long code);
+
 void task_init();
-
-#define MAX_SYSTEM_CALL_NR 128
-
-typedef unsigned long (* system_call_t)(struct pt_regs * regs);
-
-unsigned long no_system_call(struct pt_regs * regs);
-
-unsigned long sys_printf(struct pt_regs * regs);
 
 extern void ret_system_call(void);
 extern void system_call(void);
-
-extern system_call_t system_call_table[MAX_SYSTEM_CALL_NR];
-
 
 extern struct task_struct *init_task[NR_CPUS];
 extern union task_union init_task_union;
@@ -244,4 +241,3 @@ extern struct thread_struct init_thread;
 extern struct tss_struct init_tss[NR_CPUS];
 
 #endif
-

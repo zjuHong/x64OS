@@ -7,6 +7,8 @@
 #include "schedule.h"
 #include "printk.h"
 #include "SMP.h"
+#include "unistd.h"
+#include "stdio.h"
 
 
 struct mm_struct init_mm = {0};
@@ -22,50 +24,158 @@ struct thread_struct init_thread =
 	.error_code = 0
 };
 
-
 union task_union init_task_union __attribute__((__section__ (".data.init_task"))) = {INIT_TASK(init_task_union.task)};
-
 struct task_struct *init_task[NR_CPUS] = {&init_task_union.task,0};
-
-
 struct tss_struct init_tss[NR_CPUS] = { [0 ... NR_CPUS-1] = INIT_TSS };
 
-system_call_t system_call_table[MAX_SYSTEM_CALL_NR] = 
-{
-	[0] = no_system_call,
-	[1] = sys_printf,
-	[2 ... MAX_SYSTEM_CALL_NR-1] = no_system_call
-};
-
-unsigned long no_system_call(struct pt_regs * regs)
-{
-	color_printk(RED,BLACK,"no_system_call is calling,NR:%#04x\n",regs->rax);
-	return -1;
-}
-
-unsigned long sys_printf(struct pt_regs * regs)
-{
-	color_printk(BLACK,WHITE,(char *)regs->rdi);
-
-	color_printk(RED,BLACK,"FAT32 init \n");
-	DISK1_FAT32_FS_init();
-
-	return 1;
-}
 
 void user_level_function()
 {
-	long ret = 0;
-//	color_printk(RED,BLACK,"user_level_function task is running\n");
-	char string[]="Hello World!\n";
+	int errno = 0;
+	char string[]="/JIOL123Llliwos/89AIOlejk.TXT";
+	unsigned char buf[32] = {0};
+	int fd = 0;
 
-	__asm__	__volatile__	(	"leaq	sysexit_return_address(%%rip),	%%rdx	\n\t"
-					"movq	%%rsp,	%%rcx		\n\t"
+//	register int fd asm("r15") = 0;
+
+//	call sys_open
+//	int open(const char *path, int oflag);
+
+	__asm__ __volatile__	(	"sub	$0x100,	%%rsp	\n\t"
+					"pushq	%%r10	\n\t"
+					"pushq	%%r11	\n\t"
+					"leaq	sysexit_return_address0(%%rip),	%%r10	\n\t"
+					"movq	%%rsp,	%%r11		\n\t"
 					"sysenter			\n\t"
-					"sysexit_return_address:	\n\t"
-					:"=a"(ret):"0"(1),"D"(string):"memory");	
+					"sysexit_return_address0:	\n\t"
+					"xchgq	%%rdx,	%%r10	\n\t"
+					"xchgq	%%rcx,	%%r11	\n\t"
+					"popq	%%r11	\n\t"
+					"popq	%%r10	\n\t"
+					:"=a"(errno)
+					:"0"(__NR_open),"D"(string),"S"(0)
+					:"memory");
 
-//	color_printk(RED,BLACK,"user_level_function task called sysenter,ret:%ld\n",ret);
+	fd = errno;
+	
+//	call sys_read
+//	long read(int fildes, void *buf, long nbyte);
+
+	__asm__ __volatile__	(	"pushq	%%r10	\n\t"
+					"pushq	%%r11	\n\t"
+					"leaq	sysexit_return_address1(%%rip),	%%r10	\n\t"
+					"movq	%%rsp,	%%r11		\n\t"
+					"sysenter			\n\t"
+					"sysexit_return_address1:	\n\t"
+					"xchgq	%%rdx,	%%r10	\n\t"
+					"xchgq	%%rcx,	%%r11	\n\t"
+					"popq	%%r11	\n\t"
+					"popq	%%r10	\n\t"
+					:"=a"(errno),"+D"(fd)
+					:"0"(__NR_read),"S"(buf),"d"(10)
+					:"memory");
+					
+//	call sys_putstring
+//	int putstring(char *string);
+
+	__asm__ __volatile__	(	"pushq	%%r10	\n\t"
+					"pushq	%%r11	\n\t"
+					"leaq	sysexit_return_address2(%%rip),	%%r10	\n\t"
+					"movq	%%rsp,	%%r11		\n\t"
+					"sysenter			\n\t"
+					"sysexit_return_address2:	\n\t"
+					"xchgq	%%rdx,	%%r10	\n\t"
+					"xchgq	%%rcx,	%%r11	\n\t"
+					"popq	%%r11	\n\t"
+					"popq	%%r10	\n\t"
+					:"=a"(errno)
+					:"0"(__NR_putstring),"D"(buf)
+					:"memory");
+
+//	call sys_write
+//	long write(int fildes, const void *buf, long nbyte);
+
+	__asm__ __volatile__	(	"pushq	%%r10	\n\t"
+					"pushq	%%r11	\n\t"
+					"leaq	sysexit_return_address3(%%rip),	%%r10	\n\t"
+					"movq	%%rsp,	%%r11		\n\t"
+					"sysenter			\n\t"
+					"sysexit_return_address3:	\n\t"
+					"xchgq	%%rdx,	%%r10	\n\t"
+					"xchgq	%%rcx,	%%r11	\n\t"
+					"popq	%%r11	\n\t"
+					"popq	%%r10	\n\t"
+					:"=a"(errno),"+D"(fd)
+					:"0"(__NR_write),"S"(string),"d"(20)
+					:"memory");
+
+//	call sys_lseek
+//	long lseek(int fildes, long offset, int whence);
+
+	__asm__ __volatile__	(	"pushq	%%r10	\n\t"
+					"pushq	%%r11	\n\t"
+					"leaq	sysexit_return_address4(%%rip),	%%r10	\n\t"
+					"movq	%%rsp,	%%r11		\n\t"
+					"sysenter			\n\t"
+					"sysexit_return_address4:	\n\t"
+					"xchgq	%%rdx,	%%r10	\n\t"
+					"xchgq	%%rcx,	%%r11	\n\t"
+					"popq	%%r11	\n\t"
+					"popq	%%r10	\n\t"
+					:"=a"(errno),"+D"(fd)
+					:"0"(__NR_lseek),"S"(5),"d"(SEEK_SET)
+					:"memory");
+
+//	call sys_read
+//	long read(int fildes, void *buf, long nbyte);
+
+	__asm__ __volatile__	(	"pushq	%%r10	\n\t"
+					"pushq	%%r11	\n\t"
+					"leaq	sysexit_return_address5(%%rip),	%%r10	\n\t"
+					"movq	%%rsp,	%%r11		\n\t"
+					"sysenter			\n\t"
+					"sysexit_return_address5:	\n\t"
+					"xchgq	%%rdx,	%%r10	\n\t"
+					"xchgq	%%rcx,	%%r11	\n\t"
+					"popq	%%r11	\n\t"
+					"popq	%%r10	\n\t"
+					:"=a"(errno),"+D"(fd)
+					:"0"(__NR_read),"S"(buf),"d"(20)
+					:"memory");
+
+//	call sys_close
+//	int close(int fildes);
+
+	__asm__ __volatile__	(	"pushq	%%r10	\n\t"
+					"pushq	%%r11	\n\t"
+					"leaq	sysexit_return_address6(%%rip),	%%r10	\n\t"
+					"movq	%%rsp,	%%r11		\n\t"
+					"sysenter			\n\t"
+					"sysexit_return_address6:	\n\t"
+					"xchgq	%%rdx,	%%r10	\n\t"
+					"xchgq	%%rcx,	%%r11	\n\t"
+					"popq	%%r11	\n\t"
+					"popq	%%r10	\n\t"
+					:"=a"(errno),"+D"(fd)
+					:"0"(__NR_close)
+					:"memory");
+
+//	call sys_putstring
+//	int putstring(char *string);
+
+	__asm__ __volatile__	(	"pushq	%%r10	\n\t"
+					"pushq	%%r11	\n\t"
+					"leaq	sysexit_return_address7(%%rip),	%%r10	\n\t"
+					"movq	%%rsp,	%%r11		\n\t"
+					"sysenter			\n\t"
+					"sysexit_return_address7:	\n\t"
+					"xchgq	%%rdx,	%%r10	\n\t"
+					"xchgq	%%rcx,	%%r11	\n\t"
+					"popq	%%r11	\n\t"
+					"popq	%%r10	\n\t"
+					:"=a"(errno)
+					:"0"(__NR_putstring),"D"(buf)
+					:"memory");
 
 	while(1)
 		;
@@ -78,9 +188,9 @@ unsigned long do_execve(struct pt_regs * regs)
 	unsigned long * tmp;
 	unsigned long * virtual = NULL;
 	struct Page * p = NULL;
-	
-	regs->rdx = 0x800000;	//RIP
-	regs->rcx = 0xa00000;	//RSP
+
+	regs->r10 = 0x800000;	//RIP
+	regs->r11 = 0xa00000;	//RSP
 	regs->rax = 1;	
 	regs->ds = 0;
 	regs->es = 0;
@@ -102,7 +212,7 @@ unsigned long do_execve(struct pt_regs * regs)
 	flush_tlb();
 	
 	if(!(current->flags & PF_KTHREAD))
-		current->addr_limit = 0xffff800000000000;
+		current->addr_limit = TASK_SIZE;
 
 	memcpy(user_level_function,(void *)0x800000,1024);
 
@@ -113,6 +223,8 @@ unsigned long do_execve(struct pt_regs * regs)
 unsigned long init(unsigned long arg)
 {
 	struct pt_regs *regs;
+
+	DISK1_FAT32_FS_init();
 
 	color_printk(RED,BLACK,"init task is running,arg:%#018lx\n",arg);
 
@@ -128,6 +240,37 @@ unsigned long init(unsigned long arg)
 
 	return 1;
 }
+
+
+void kernel_thread_func(void);
+__asm__ (
+"kernel_thread_func:	\n\t"
+"	popq	%r15	\n\t"
+"	popq	%r14	\n\t"	
+"	popq	%r13	\n\t"	
+"	popq	%r12	\n\t"	
+"	popq	%r11	\n\t"	
+"	popq	%r10	\n\t"	
+"	popq	%r9	\n\t"	
+"	popq	%r8	\n\t"	
+"	popq	%rbx	\n\t"	
+"	popq	%rcx	\n\t"	
+"	popq	%rdx	\n\t"	
+"	popq	%rsi	\n\t"	
+"	popq	%rdi	\n\t"	
+"	popq	%rbp	\n\t"	
+"	popq	%rax	\n\t"	
+"	movq	%rax,	%ds	\n\t"
+"	popq	%rax		\n\t"
+"	movq	%rax,	%es	\n\t"
+"	popq	%rax		\n\t"
+"	addq	$0x38,	%rsp	\n\t"
+/////////////////////////////////
+"	movq	%rdx,	%rdi	\n\t"
+"	callq	*%rbx		\n\t"
+"	movq	%rax,	%rdi	\n\t"
+"	callq	do_exit		\n\t"
+);
 
 
 
@@ -179,51 +322,11 @@ unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned
 }
 
 
-
-unsigned long do_exit(unsigned long code)
+unsigned long do_exit(unsigned long exit_code)
 {
-	color_printk(RED,BLACK,"exit task is running,arg:%#018lx\n",code);
+	color_printk(RED,BLACK,"exit task is running,arg:%#018lx\n",exit_code);
 	while(1);
 }
-
-
-unsigned long  system_call_function(struct pt_regs * regs)
-{
-	return system_call_table[regs->rax](regs);
-}
-
-
-extern void kernel_thread_func(void);
-__asm__ (
-"kernel_thread_func:	\n\t"
-"	popq	%r15	\n\t"
-"	popq	%r14	\n\t"	
-"	popq	%r13	\n\t"	
-"	popq	%r12	\n\t"	
-"	popq	%r11	\n\t"	
-"	popq	%r10	\n\t"	
-"	popq	%r9	\n\t"	
-"	popq	%r8	\n\t"	
-"	popq	%rbx	\n\t"	
-"	popq	%rcx	\n\t"	
-"	popq	%rdx	\n\t"	
-"	popq	%rsi	\n\t"	
-"	popq	%rdi	\n\t"	
-"	popq	%rbp	\n\t"	
-"	popq	%rax	\n\t"	
-"	movq	%rax,	%ds	\n\t"
-"	popq	%rax		\n\t"
-"	movq	%rax,	%es	\n\t"
-"	popq	%rax		\n\t"
-"	addq	$0x38,	%rsp	\n\t"
-/////////////////////////////////
-"	movq	%rdx,	%rdi	\n\t"
-"	callq	*%rbx		\n\t"
-"	movq	%rax,	%rdi	\n\t"
-"	callq	do_exit		\n\t"
-);
-
-
 
 int kernel_thread(unsigned long (* fn)(unsigned long), unsigned long arg, unsigned long flags)
 {
@@ -247,10 +350,7 @@ int kernel_thread(unsigned long (* fn)(unsigned long), unsigned long arg, unsign
 
 inline void __switch_to(struct task_struct *prev,struct task_struct *next)
 {
-	unsigned int color = 0;
-
 	init_tss[SMP_cpu_id()].rsp0 = next->thread->rsp0;
-//	init_tss[0].rsp0 = next->thread->rsp0;
 
 	__asm__ __volatile__("movq	%%fs,	%0 \n\t":"=a"(prev->thread->fs));
 	__asm__ __volatile__("movq	%%gs,	%0 \n\t":"=a"(prev->thread->gs));
@@ -259,17 +359,6 @@ inline void __switch_to(struct task_struct *prev,struct task_struct *next)
 	__asm__ __volatile__("movq	%0,	%%gs \n\t"::"a"(next->thread->gs));
 
 	wrmsr(0x175,next->thread->rsp0);
-
-	if(SMP_cpu_id() == 0)
-		color = WHITE;
-	else
-		color = YELLOW;
-
-	color_printk(color,BLACK,"prev->thread->rsp0:%#018lx\t",prev->thread->rsp0);
-	color_printk(color,BLACK,"prev->thread->rsp :%#018lx\n",prev->thread->rsp);
-	color_printk(color,BLACK,"next->thread->rsp0:%#018lx\t",next->thread->rsp0);
-	color_printk(color,BLACK,"next->thread->rsp :%#018lx\n",next->thread->rsp);
-//	color_printk(color,BLACK,"CPUID:%#018lx\n",SMP_cpu_id());
 }
 
 /*
@@ -311,5 +400,4 @@ void task_init()
 	init_task_union.task.state = TASK_RUNNING;
 	init_task_union.task.cpu_id = 0;
 }
-
 

@@ -15,7 +15,6 @@
 #define cli()	 	__asm__ __volatile__ ("cli	\n\t":::"memory")
 #define nop() 		__asm__ __volatile__ ("nop	\n\t")
 #define io_mfence() 	__asm__ __volatile__ ("mfence	\n\t":::"memory")
-#define barrior()	__asm__ __volatile__ ("":::"memory")
 
 #define hlt() 		__asm__ __volatile__ ("hlt	\n\t")
 #define pause() 	__asm__ __volatile__ ("pause	\n\t")
@@ -341,10 +340,10 @@ inline unsigned long bit_clean(unsigned long * addr,unsigned long nr)
 inline unsigned char io_in8(unsigned short port)
 {
 	unsigned char ret = 0;
-	__asm__ __volatile__	(	"inb	%%dx,	%0	\n\t"
-					"mfence			\n\t"
-					:"=a"(ret)
-					:"d"(port)
+	__asm__ __volatile__(	"inb	%%dx,	%0	\n\t"
+				"mfence			\n\t"
+				:"=a"(ret)
+				:"d"(port)
 					:"memory"
 				);
 	return ret;
@@ -357,10 +356,10 @@ inline unsigned char io_in8(unsigned short port)
 inline unsigned int io_in32(unsigned short port)
 {
 	unsigned int ret = 0;
-	__asm__ __volatile__	(	"inl	%%dx,	%0	\n\t"
-					"mfence			\n\t"
-					:"=a"(ret)
-					:"d"(port)
+	__asm__ __volatile__(	"inl	%%dx,	%0	\n\t"
+				"mfence			\n\t"
+				:"=a"(ret)
+				:"d"(port)
 					:"memory"
 				);
 	return ret;
@@ -372,10 +371,10 @@ inline unsigned int io_in32(unsigned short port)
 
 inline void io_out8(unsigned short port,unsigned char value)
 {
-	__asm__ __volatile__	(	"outb	%0,	%%dx	\n\t"
-					"mfence			\n\t"
-					:
-					:"a"(value),"d"(port)
+	__asm__ __volatile__(	"outb	%0,	%%dx	\n\t"
+				"mfence			\n\t"
+				:
+				:"a"(value),"d"(port)
 					:"memory"
 				);
 }
@@ -386,10 +385,10 @@ inline void io_out8(unsigned short port,unsigned char value)
 
 inline void io_out32(unsigned short port,unsigned int value)
 {
-	__asm__ __volatile__	(	"outl	%0,	%%dx	\n\t"
-					"mfence			\n\t"
-					:
-					:"a"(value),"d"(port)
+	__asm__ __volatile__(	"outl	%0,	%%dx	\n\t"
+				"mfence			\n\t"
+				:
+				:"a"(value),"d"(port)
 					:"memory"
 				);
 }
@@ -408,13 +407,13 @@ inline unsigned long rdmsr(unsigned long address)
 {
 	unsigned int tmp0 = 0;
 	unsigned int tmp1 = 0;
-	__asm__ __volatile__	("rdmsr	\n\t":"=d"(tmp0),"=a"(tmp1):"c"(address):"memory");	
+	__asm__ __volatile__("rdmsr	\n\t":"=d"(tmp0),"=a"(tmp1):"c"(address):"memory");	
 	return (unsigned long)tmp0<<32 | tmp1;
 }
 
 inline void wrmsr(unsigned long address,unsigned long value)
 {
-	__asm__ __volatile__	("wrmsr	\n\t"::"d"(value >> 32),"a"(value & 0xffffffff),"c"(address):"memory");	
+	__asm__ __volatile__("wrmsr	\n\t"::"d"(value >> 32),"a"(value & 0xffffffff),"c"(address):"memory");	
 }
 
 inline unsigned long get_rsp()
@@ -427,9 +426,9 @@ inline unsigned long get_rsp()
 inline unsigned long get_rflags()
 {
 	unsigned long tmp = 0;
-	__asm__ __volatile__	(	"pushfq	\n\t"
-					 "movq	(%%rsp), %0	\n\t"
-					 "popfq	\n\t"
+	__asm__ __volatile__	("pushfq	\n\t"
+				 "movq	(%%rsp), %0	\n\t"
+				 "popfq	\n\t"
 					:"=r"(tmp)
 					:
 					:"memory"
@@ -450,13 +449,13 @@ inline long copy_from_user(void * from,void * to,unsigned long size)
 	unsigned long d0,d1;
 	if(!verify_area(from,size))
 		return 0;
-	__asm__ __volatile__	(	"rep	\n\t"
-					 "movsq	\n\t"
-					 "movq	%3,	%0	\n\t"
-					 "rep	\n\t"
-					 "movsb	\n\t"
-					:"=&c"(size),"=&D"(d0),"=&S"(d1)
-					:"r"(size & 7),"0"(size / 8),"1"(to),"2"(from)
+	__asm__ __volatile__	("rep	\n\t"
+				 "movsq	\n\t"
+				 "movq	%3,	%0	\n\t"
+				 "rep	\n\t"
+				 "movsb	\n\t"
+				:"=&c"(size),"=&D"(d0),"=&S"(d1)
+				:"r"(size & 7),"0"(size / 8),"1"(to),"2"(from)
 					:"memory"
 				);
 	return size;
@@ -467,13 +466,13 @@ inline long copy_to_user(void * from,void * to,unsigned long size)
 	unsigned long d0,d1;
 	if(!verify_area(to,size))
 		return 0;
-	__asm__ __volatile__	(	"rep	\n\t"
-				 	"movsq	\n\t"
-				 	"movq	%3,	%0	\n\t"
-					 "rep	\n\t"
-					 "movsb	\n\t"
-					:"=&c"(size),"=&D"(d0),"=&S"(d1)
-					:"r"(size & 7),"0"(size / 8),"1"(to),"2"(from)
+	__asm__ __volatile__	("rep	\n\t"
+				 "movsq	\n\t"
+				 "movq	%3,	%0	\n\t"
+				 "rep	\n\t"
+				 "movsb	\n\t"
+				:"=&c"(size),"=&D"(d0),"=&S"(d1)
+				:"r"(size & 7),"0"(size / 8),"1"(to),"2"(from)
 					:"memory"
 				);
 	return size;

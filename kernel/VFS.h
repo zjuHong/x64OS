@@ -129,4 +129,7 @@ struct file_operations
 	long (*ioctl)(struct index_node * inode,struct file * filp,unsigned long cmd,unsigned long arg);
 };
 
+struct dir_entry * path_walk(char * name,unsigned long flags);
+extern struct super_block * root_sb;
+
 #endif
