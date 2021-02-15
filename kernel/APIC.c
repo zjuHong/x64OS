@@ -7,7 +7,8 @@
 #include "ptrace.h"
 #include "cpu.h"
 #include "APIC.h"
-
+#include "schedule.h"
+#include "SMP.h"
 
 /*
 

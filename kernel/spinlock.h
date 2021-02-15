@@ -1,7 +1,9 @@
 #ifndef __SPINLOCK_H__
+
 #define __SPINLOCK_H__
 
 #include "preempt.h"
+#include "lib.h"
 
 /*
 
@@ -70,6 +72,39 @@ inline long spin_trylock(spinlock_T * lock)
 		preempt_enable();
 	return tmp_value;
 }
+
+#define local_irq_save(x)	__asm__ __volatile__("pushfq ; popq %0 ; cli":"=g"(x)::"memory")
+#define local_irq_restore(x)	__asm__ __volatile__("pushq %0 ; popfq"::"g"(x):"memory")
+#define local_irq_disable()	cli();
+#define local_irq_enable()	sti();
+
+#define spin_lock_irqsave(lock,flags)	\
+do					\
+{					\
+	local_irq_save(flags);		\
+	spin_lock(lock);		\
+}while(0)
+
+#define spin_unlock_irqrestore(lock,flags)	\
+do						\
+{						\
+	spin_unlock(lock);			\
+	local_irq_restore(flags);		\
+}while(0)
+
+#define spin_lock_irq(lock)	\
+do				\
+{				\
+	local_irq_disable();	\
+	spin_lock(lock);	\
+}while(0)
+
+#define spin_unlock_irq(lock)	\
+do				\
+{				\
+	spin_unlock(lock);	\
+	local_irq_enable();	\
+}while(0)
 
 #endif
 

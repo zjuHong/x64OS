@@ -2,10 +2,6 @@
 
 #define __TRAP_H__
 
-#include "linkage.h"
-#include "printk.h"
-#include "lib.h"
-
 /*
 
 */

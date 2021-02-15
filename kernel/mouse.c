@@ -1,13 +1,14 @@
 #include "mouse.h"
 #include "keyboard.h"
-#include "lib.h"
-#include "interrupt.h"
+
+
 #include "APIC.h"
 #include "memory.h"
 #include "printk.h"
 
 struct keyboard_inputbuffer * p_mouse = NULL;
 static int mouse_count = 0;
+struct mouse_packet mouse;
 
 /*
 

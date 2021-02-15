@@ -16,7 +16,7 @@ struct mouse_packet
 	char Byte2;	//Y movement
 };
 
-struct mouse_packet mouse;
+extern struct mouse_packet mouse;
 
 /*
 

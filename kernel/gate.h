@@ -1,6 +1,5 @@
 #ifndef __GATE_H__
 #define __GATE_H__
-extern unsigned int TSS64_Table[26];
 
 struct desc_struct 
 {
@@ -14,7 +13,6 @@ struct gate_struct
 
 extern struct desc_struct GDT_Table[];
 extern struct gate_struct IDT_Table[];
-extern unsigned int TSS64_Table[26];
 
 /*
 
@@ -44,6 +42,16 @@ do								\
 				);				\
 }while(0)
 
+/*
+
+*/
+
+inline void set_tss_descriptor(unsigned int n,void * addr)
+{
+	unsigned long limit = 103;
+	*(unsigned long *)(GDT_Table + n) = (limit & 0xffff) | (((unsigned long)addr & 0xffff) << 16) | (((unsigned long)addr >> 16 & 0xff) << 32) | ((unsigned long)0x89 << 40) | ((limit >> 16 & 0xf) << 48) | (((unsigned long)addr >> 24 & 0xff) << 56);	/////89 is attribute
+	*(unsigned long *)(GDT_Table + n + 1) = ((unsigned long)addr >> 32 & 0xffffffff) | 0;
+}
 
 /*
 

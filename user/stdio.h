@@ -8,5 +8,7 @@
 
 #define SEEK_MAX	3
 
+int putstring(char *string);
+
 
 #endif

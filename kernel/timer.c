@@ -4,6 +4,8 @@
 #include "lib.h"
 #include "memory.h"
 
+unsigned long volatile jiffies = 0;
+struct timer_list timer_list_head;
 void init_timer(struct timer_list * timer,void (* func)(void * data),void *data,unsigned long expire_jiffies)
 {
 	list_init(&timer->list);

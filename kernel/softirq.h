@@ -4,7 +4,7 @@
 
 #define TIMER_SIRQ	(1 << 0)
 
-unsigned long softirq_status = 0;
+extern unsigned long softirq_status;
 
 struct softirq
 {
@@ -12,7 +12,7 @@ struct softirq
 	void * data;
 };
 
-struct softirq softirq_vector[64] = {0};
+extern struct softirq softirq_vector[64];
 
 
 void register_softirq(int nr,void (*action)(void * data),void * data);

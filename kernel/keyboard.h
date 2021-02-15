@@ -2,6 +2,7 @@
 
 #define __KEYBOARD_H__
 
+extern struct keyboard_inputbuffer * p_kb;
 #define NR_SCAN_CODES 	0x80
 #define MAP_COLS	2
 
@@ -15,7 +16,6 @@ struct keyboard_inputbuffer
 	unsigned char buf[KB_BUF_SIZE];
 };
 
-struct keyboard_inputbuffer * p_kb;
 /*
 
 */

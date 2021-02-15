@@ -1,15 +1,17 @@
 #include <stdarg.h>
 #include "printk.h"
-#include "lib.h"
-#include "linkage.h"
 #include "memory.h"
 #include "spinlock.h"
 #include "UEFI_boot_param_info.h"
 
+static char buf[4096]={0};
+
+struct position Pos;
 
 /*
 
 */
+
 void frame_buffer_init()
 {
 	////re init frame buffer;
@@ -48,6 +50,7 @@ void frame_buffer_init()
 
 	flush_tlb();
 }
+
 
 /*
 
@@ -347,12 +350,10 @@ int color_printk(unsigned int FRcolor,unsigned int BKcolor,const char * fmt,...)
 	int i = 0;
 	int count = 0;
 	int line = 0;
+	unsigned long flags = 0;
 	va_list args;
 
-	if(get_rflags() & 0x200UL)
-	{
-		spin_lock(&Pos.printk_lock);
-	}
+	spin_lock_irqsave(&Pos.printk_lock,flags);
 
 	va_start(args, fmt);
 	i = vsprintf(buf,fmt, args);
@@ -411,10 +412,8 @@ Label_tab:
 
 	}
 
-	if(get_rflags() & 0x200UL)
-	{
-		spin_unlock(&Pos.printk_lock);
-	}
+	spin_unlock_irqrestore(&Pos.printk_lock,flags);
 
 	return i;
 }
+

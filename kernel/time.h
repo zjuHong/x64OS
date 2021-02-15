@@ -12,10 +12,10 @@ struct time
 	int year;	//09+32
 };
 
-struct time time;
+extern struct time time;
 	
 #define	BCD2BIN(value)	(((value) & 0xf) + ((value) >> 4 ) * 10)
 
-int get_cmos_time(struct time *time);
+void get_cmos_time(struct time *time);
 
 #endif

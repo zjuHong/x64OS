@@ -7,6 +7,10 @@
 #include "fat32.h"
 #include "stdio.h"
 #include "fcntl.h"
+#include "ptrace.h"
+#include "task.h"
+#include "sched.h"
+#include "memory.h"
 
 /*
 normal
@@ -30,26 +34,6 @@ unsigned long no_system_call(void)
 	color_printk(RED,BLACK,"no_system_call is calling\n");
 	return -ENOSYS;
 }
-
-/*	
-__asm__	(
-".global puts	\n\t"
-".type	puts,	@function \n\t"
-"puts:		\n\t"
-"pushq	%r10	\n\t"
-"pushq	%r11	\n\t"
-"movq	$__NR_puts	,	%rax	\n\t"
-"leaq	sysexit_return_address(%rip),	%r10	\n\t"
-"movq	%rsp,	%r11		\n\t"
-"sysenter			\n\t"
-"sysexit_return_address:	\n\t"
-"xchgq	%rdx,	%r10	\n\t"
-"xchgq	%rcx,	%r11	\n\t"
-"popq	%r11	\n\t"
-"popq	%r10	\n\t"
-);	
-*/
-
 
 unsigned long sys_putstring(char *string)
 {
@@ -89,12 +73,6 @@ unsigned long sys_open(char *filename,int flags)
 
 	dentry = path_walk(path,0);
 	kfree(path);
-
-/////////////////
-	if(dentry != NULL)
-		color_printk(BLUE,WHITE,"Find 89AIOlejk.TXT\nDIR_FirstCluster:%#018lx\tDIR_FileSize:%#018lx\n",((struct FAT32_inode_info *)(dentry->dir_inode->private_index_info))->first_cluster,dentry->dir_inode->file_size);
-	else
-		color_printk(BLUE,WHITE,"Can`t find file\n");
 
 	if(dentry == NULL)
 		return -ENOENT;
@@ -210,4 +188,37 @@ unsigned long sys_lseek(int filds,long offset,int whence)
 		ret = filp->f_ops->lseek(filp,offset,whence);
 	return ret;
 }
+
+unsigned long sys_fork()
+{
+	struct pt_regs *regs = (struct pt_regs *)current->thread->rsp0 -1;
+	color_printk(GREEN,BLACK,"sys_fork\n");
+	return do_fork(regs,0,regs->rsp,0);	
+}
+
+unsigned long sys_vfork()
+{
+	struct pt_regs *regs = (struct pt_regs *)current->thread->rsp0 -1;
+	color_printk(GREEN,BLACK,"sys_vfork\n");
+	return do_fork(regs,CLONE_VM | CLONE_FS | CLONE_SIGNAL,regs->rsp,0);
+}
+
+unsigned long sys_brk(unsigned long brk)
+{
+	unsigned long new_brk = PAGE_2M_ALIGN(brk);
+
+	color_printk(GREEN,BLACK,"sys_brk:%#018lx\n",brk);
+	color_printk(RED,BLACK,"brk:%#018lx,new_brk:%#018lx,current->mm->end_brk:%#018lx\n",brk,new_brk,current->mm->end_brk);
+	if(new_brk == 0)
+		return current->mm->start_brk;
+	if(new_brk < current->mm->end_brk)	//release  brk space
+		return 0;	
+
+	new_brk = do_brk(current->mm->end_brk,new_brk - current->mm->end_brk);	//expand brk space
+
+	current->mm->end_brk = new_brk;
+	return new_brk;
+}
+
+
 

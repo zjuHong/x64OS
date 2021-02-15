@@ -1,6 +1,6 @@
 #include "keyboard.h"
 #include "lib.h"
-#include "interrupt.h"
+
 #include "APIC.h"
 #include "memory.h"
 #include "printk.h"
@@ -171,7 +171,7 @@ void analysis_keycode()
 		}			
 
 		if(key)
-			color_printk(RED,BLACK,"(K:%c)\t",key);
+			color_printk(RED,YELLOW,"(K:%c)\t",key);
 	}
 }
 
@@ -226,7 +226,14 @@ void keyboard_init()
 		for(j = 0;j<1000;j++)
 			nop();
 	
-	register_irq(0x21, &entry , &keyboard_handler, (unsigned long)p_kb, &keyboard_int_controller, "PS/2 KeyBoard");
+	shift_l = 0;
+	shift_r = 0;
+	ctrl_l  = 0;
+	ctrl_r  = 0;
+	alt_l   = 0;
+	alt_r   = 0;
+
+	register_irq(0x21, &entry , &keyboard_handler, (unsigned long)p_kb, &keyboard_int_controller, "ps/2 keyboard");
 }
 
 /*

@@ -2,7 +2,7 @@
 #include "memory.h"
 #include "printk.h"
 #include "lib.h"
-#include "task.h"
+#include "errno.h"
 
 
 struct Global_Memory_Descriptor memory_management_struct = {{0},0};
@@ -96,8 +96,8 @@ void init_memory()
 		if(p->type == 1)
 			TotalMem +=  p->length;
 
-		memory_management_struct.e820[i].address += p->address;
-		memory_management_struct.e820[i].length	 += p->length;
+		memory_management_struct.e820[i].address = p->address;
+		memory_management_struct.e820[i].length	 = p->length;
 		memory_management_struct.e820[i].type	 = p->type;		
 		memory_management_struct.e820_length = i;
 
@@ -700,9 +700,9 @@ struct Slab_cache * slab_create(unsigned long size,void *(* constructor)(void * 
 	
 	page_init(slab_cache->cache_pool->page,PG_Kernel);
 
-	slab_cache->cache_pool->using_count = 0;
+	slab_cache->cache_pool->using_count = PAGE_2M_SIZE/slab_cache->size;
 
-	slab_cache->cache_pool->free_count = PAGE_2M_SIZE/slab_cache->size;
+	slab_cache->cache_pool->free_count = slab_cache->cache_pool->using_count;
 
 	slab_cache->total_free = slab_cache->cache_pool->free_count;
 
@@ -803,8 +803,8 @@ void * slab_malloc(struct Slab_cache * slab_cache,unsigned long arg)
 	
 		page_init(tmp_slab->page,PG_Kernel);
 
-		tmp_slab->using_count = 0;
-		tmp_slab->free_count = PAGE_2M_SIZE/slab_cache->size;
+		tmp_slab->using_count = PAGE_2M_SIZE/slab_cache->size;
+		tmp_slab->free_count = tmp_slab->using_count;
 		tmp_slab->Vaddress = Phy_To_Virt(tmp_slab->page->PHY_address);
 
 		tmp_slab->color_count = tmp_slab->free_count;
@@ -1030,7 +1030,6 @@ unsigned long slab_init()
 	}
 
 	//color_printk(ORANGE,BLACK,"3.memory_management_struct.bits_map:%#018lx\tzone_struct->page_using_count:%d\tzone_struct->page_free_count:%d\n",*memory_management_struct.bits_map,memory_management_struct.zones_struct->page_using_count,memory_management_struct.zones_struct->page_free_count);
-
 	//color_printk(ORANGE,BLACK,"start_code:%#018lx,end_code:%#018lx,end_data:%#018lx,start_brk:%#018lx,end_of_struct:%#018lx\n",memory_management_struct.start_code,memory_management_struct.end_code,memory_management_struct.end_data,memory_management_struct.start_brk, memory_management_struct.end_of_struct);
 
 	return 1;
@@ -1094,4 +1093,48 @@ void pagetable_init()
 
 	flush_tlb();
 }
+
+
+unsigned long do_brk(unsigned long addr,unsigned long len)
+{
+	unsigned long * tmp = NULL;
+	unsigned long * virtual = NULL;
+	struct Page * p = NULL;
+	unsigned long i = 0;
+
+	for(i = addr;i < addr + len;i += PAGE_2M_SIZE)
+	{
+		tmp = Phy_To_Virt((unsigned long *)((unsigned long)current->mm->pgd & (~ 0xfffUL)) + ((i >> PAGE_GDT_SHIFT) & 0x1ff));
+		if(*tmp == NULL)
+		{
+			virtual = kmalloc(PAGE_4K_SIZE,0);
+			memset(virtual,0,PAGE_4K_SIZE);
+			set_mpl4t(tmp,mk_mpl4t(Virt_To_Phy(virtual),PAGE_USER_GDT));
+		}
+
+		tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((i >> PAGE_1G_SHIFT) & 0x1ff));
+		if(*tmp == NULL)
+		{
+			virtual = kmalloc(PAGE_4K_SIZE,0);
+			memset(virtual,0,PAGE_4K_SIZE);
+			set_pdpt(tmp,mk_pdpt(Virt_To_Phy(virtual),PAGE_USER_Dir));
+		}
+
+		tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((i >> PAGE_2M_SHIFT) & 0x1ff));
+		if(*tmp == NULL)
+		{
+			p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped);
+			if(p == NULL)
+				return -ENOMEM;
+			set_pdt(tmp,mk_pdt(p->PHY_address,PAGE_USER_Page));
+		}
+	}
+
+	current->mm->end_brk = i;
+
+	flush_tlb();
+
+	return i;
+}
+
 

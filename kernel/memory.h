@@ -129,7 +129,7 @@ struct Global_Memory_Descriptor
 	unsigned long	zones_size;
 	unsigned long 	zones_length;
 
-	unsigned long 	start_code , end_code , end_data , end_rodata , start_brk, end_brk;
+	unsigned long 	start_code , end_code , end_data , end_rodata , start_brk;
 
 	unsigned long	end_of_struct;	
 };

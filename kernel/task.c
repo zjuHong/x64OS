@@ -9,7 +9,9 @@
 #include "SMP.h"
 #include "unistd.h"
 #include "stdio.h"
-
+#include "sched.h"
+#include "errno.h"
+#include "fcntl.h"
 
 struct mm_struct init_mm = {0};
 
@@ -28,215 +30,156 @@ union task_union init_task_union __attribute__((__section__ (".data.init_task"))
 struct task_struct *init_task[NR_CPUS] = {&init_task_union.task,0};
 struct tss_struct init_tss[NR_CPUS] = { [0 ... NR_CPUS-1] = INIT_TSS };
 
+long global_pid;
 
-void user_level_function()
+struct task_struct *get_task(long pid)
 {
-	int errno = 0;
-	char string[]="/JIOL123Llliwos/89AIOlejk.TXT";
-	unsigned char buf[32] = {0};
-	int fd = 0;
-
-//	register int fd asm("r15") = 0;
-
-//	call sys_open
-//	int open(const char *path, int oflag);
-
-	__asm__ __volatile__	(	"sub	$0x100,	%%rsp	\n\t"
-					"pushq	%%r10	\n\t"
-					"pushq	%%r11	\n\t"
-					"leaq	sysexit_return_address0(%%rip),	%%r10	\n\t"
-					"movq	%%rsp,	%%r11		\n\t"
-					"sysenter			\n\t"
-					"sysexit_return_address0:	\n\t"
-					"xchgq	%%rdx,	%%r10	\n\t"
-					"xchgq	%%rcx,	%%r11	\n\t"
-					"popq	%%r11	\n\t"
-					"popq	%%r10	\n\t"
-					:"=a"(errno)
-					:"0"(__NR_open),"D"(string),"S"(0)
-					:"memory");
-
-	fd = errno;
-	
-//	call sys_read
-//	long read(int fildes, void *buf, long nbyte);
-
-	__asm__ __volatile__	(	"pushq	%%r10	\n\t"
-					"pushq	%%r11	\n\t"
-					"leaq	sysexit_return_address1(%%rip),	%%r10	\n\t"
-					"movq	%%rsp,	%%r11		\n\t"
-					"sysenter			\n\t"
-					"sysexit_return_address1:	\n\t"
-					"xchgq	%%rdx,	%%r10	\n\t"
-					"xchgq	%%rcx,	%%r11	\n\t"
-					"popq	%%r11	\n\t"
-					"popq	%%r10	\n\t"
-					:"=a"(errno),"+D"(fd)
-					:"0"(__NR_read),"S"(buf),"d"(10)
-					:"memory");
-					
-//	call sys_putstring
-//	int putstring(char *string);
-
-	__asm__ __volatile__	(	"pushq	%%r10	\n\t"
-					"pushq	%%r11	\n\t"
-					"leaq	sysexit_return_address2(%%rip),	%%r10	\n\t"
-					"movq	%%rsp,	%%r11		\n\t"
-					"sysenter			\n\t"
-					"sysexit_return_address2:	\n\t"
-					"xchgq	%%rdx,	%%r10	\n\t"
-					"xchgq	%%rcx,	%%r11	\n\t"
-					"popq	%%r11	\n\t"
-					"popq	%%r10	\n\t"
-					:"=a"(errno)
-					:"0"(__NR_putstring),"D"(buf)
-					:"memory");
-
-//	call sys_write
-//	long write(int fildes, const void *buf, long nbyte);
-
-	__asm__ __volatile__	(	"pushq	%%r10	\n\t"
-					"pushq	%%r11	\n\t"
-					"leaq	sysexit_return_address3(%%rip),	%%r10	\n\t"
-					"movq	%%rsp,	%%r11		\n\t"
-					"sysenter			\n\t"
-					"sysexit_return_address3:	\n\t"
-					"xchgq	%%rdx,	%%r10	\n\t"
-					"xchgq	%%rcx,	%%r11	\n\t"
-					"popq	%%r11	\n\t"
-					"popq	%%r10	\n\t"
-					:"=a"(errno),"+D"(fd)
-					:"0"(__NR_write),"S"(string),"d"(20)
-					:"memory");
-
-//	call sys_lseek
-//	long lseek(int fildes, long offset, int whence);
-
-	__asm__ __volatile__	(	"pushq	%%r10	\n\t"
-					"pushq	%%r11	\n\t"
-					"leaq	sysexit_return_address4(%%rip),	%%r10	\n\t"
-					"movq	%%rsp,	%%r11		\n\t"
-					"sysenter			\n\t"
-					"sysexit_return_address4:	\n\t"
-					"xchgq	%%rdx,	%%r10	\n\t"
-					"xchgq	%%rcx,	%%r11	\n\t"
-					"popq	%%r11	\n\t"
-					"popq	%%r10	\n\t"
-					:"=a"(errno),"+D"(fd)
-					:"0"(__NR_lseek),"S"(5),"d"(SEEK_SET)
-					:"memory");
-
-//	call sys_read
-//	long read(int fildes, void *buf, long nbyte);
-
-	__asm__ __volatile__	(	"pushq	%%r10	\n\t"
-					"pushq	%%r11	\n\t"
-					"leaq	sysexit_return_address5(%%rip),	%%r10	\n\t"
-					"movq	%%rsp,	%%r11		\n\t"
-					"sysenter			\n\t"
-					"sysexit_return_address5:	\n\t"
-					"xchgq	%%rdx,	%%r10	\n\t"
-					"xchgq	%%rcx,	%%r11	\n\t"
-					"popq	%%r11	\n\t"
-					"popq	%%r10	\n\t"
-					:"=a"(errno),"+D"(fd)
-					:"0"(__NR_read),"S"(buf),"d"(20)
-					:"memory");
-
-//	call sys_close
-//	int close(int fildes);
-
-	__asm__ __volatile__	(	"pushq	%%r10	\n\t"
-					"pushq	%%r11	\n\t"
-					"leaq	sysexit_return_address6(%%rip),	%%r10	\n\t"
-					"movq	%%rsp,	%%r11		\n\t"
-					"sysenter			\n\t"
-					"sysexit_return_address6:	\n\t"
-					"xchgq	%%rdx,	%%r10	\n\t"
-					"xchgq	%%rcx,	%%r11	\n\t"
-					"popq	%%r11	\n\t"
-					"popq	%%r10	\n\t"
-					:"=a"(errno),"+D"(fd)
-					:"0"(__NR_close)
-					:"memory");
-
-//	call sys_putstring
-//	int putstring(char *string);
-
-	__asm__ __volatile__	(	"pushq	%%r10	\n\t"
-					"pushq	%%r11	\n\t"
-					"leaq	sysexit_return_address7(%%rip),	%%r10	\n\t"
-					"movq	%%rsp,	%%r11		\n\t"
-					"sysenter			\n\t"
-					"sysexit_return_address7:	\n\t"
-					"xchgq	%%rdx,	%%r10	\n\t"
-					"xchgq	%%rcx,	%%r11	\n\t"
-					"popq	%%r11	\n\t"
-					"popq	%%r10	\n\t"
-					:"=a"(errno)
-					:"0"(__NR_putstring),"D"(buf)
-					:"memory");
-
-	while(1)
-		;
+	struct task_struct *tsk = NULL;
+	for(tsk = init_task_union.task.next;tsk != &init_task_union.task;tsk = tsk->next)
+	{
+		if(tsk->pid == pid)
+			return tsk;
+	}
+	return NULL;
 }
 
 
-unsigned long do_execve(struct pt_regs * regs)
+struct file * open_exec_file(char * path)
 {
-	unsigned long addr = 0x800000;
+	struct dir_entry * dentry = NULL;
+	struct file * filp = NULL;
+
+	dentry = path_walk(path,0);
+
+	if(dentry == NULL)
+		return (void *)-ENOENT;
+	if(dentry->dir_inode->attribute == FS_ATTR_DIR)
+		return (void *)-ENOTDIR;
+
+	filp = (struct file *)kmalloc(sizeof(struct file),0);
+	if(filp == NULL)
+		return (void *)-ENOMEM;
+
+	filp->position = 0;
+	filp->mode = 0;
+	filp->dentry = dentry;
+	filp->mode = O_RDONLY;
+	filp->f_ops = dentry->dir_inode->f_ops;
+
+	return filp;
+}
+
+
+unsigned long do_execve(struct pt_regs *regs,char *name)
+{
+	unsigned long code_start_addr = 0x800000;
+	unsigned long stack_start_addr = 0xa00000;
+	unsigned long brk_start_addr = 0xc00000;
 	unsigned long * tmp;
 	unsigned long * virtual = NULL;
 	struct Page * p = NULL;
+	struct file * filp = NULL;
+	unsigned long retval = 0;
+	long pos = 0;
 
-	regs->r10 = 0x800000;	//RIP
-	regs->r11 = 0xa00000;	//RSP
-	regs->rax = 1;	
-	regs->ds = 0;
-	regs->es = 0;
+	regs->ds = USER_DS;
+	regs->es = USER_DS;
+	regs->ss = USER_DS;
+	regs->cs = USER_CS;
+//	regs->rip = new_rip;
+//	regs->rsp = new_rsp;
+	regs->r10 = 0x800000;
+	regs->r11 = 0xa00000;
+	regs->rax = 1;
+
 	color_printk(RED,BLACK,"do_execve task is running\n");
 
-	tmp = Phy_To_Virt((unsigned long *)((unsigned long)Get_gdt() & (~ 0xfffUL)) + ((addr >> PAGE_GDT_SHIFT) & 0x1ff));
+	if(current->flags & PF_VFORK)
+	{
+		current->mm = (struct mm_struct *)kmalloc(sizeof(struct mm_struct),0);
+		memset(current->mm,0,sizeof(struct mm_struct));
 
-	virtual = kmalloc(PAGE_4K_SIZE,0);
-	set_mpl4t(tmp,mk_mpl4t(Virt_To_Phy(virtual),PAGE_USER_GDT));
+		current->mm->pgd = (pml4t_t *)Virt_To_Phy(kmalloc(PAGE_4K_SIZE,0));
+		color_printk(RED,BLACK,"load_binary_file malloc new pgd:%#018lx\n",current->mm->pgd);
+		memset(Phy_To_Virt(current->mm->pgd),0,PAGE_4K_SIZE/2);
+		memcpy(Phy_To_Virt(init_task[SMP_cpu_id()]->mm->pgd)+256,Phy_To_Virt(current->mm->pgd)+256,PAGE_4K_SIZE/2);	//copy kernel space
+	}
 
-	tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((addr >> PAGE_1G_SHIFT) & 0x1ff));
-	virtual = kmalloc(PAGE_4K_SIZE,0);
-	set_pdpt(tmp,mk_pdpt(Virt_To_Phy(virtual),PAGE_USER_Dir));
+	tmp = Phy_To_Virt((unsigned long *)((unsigned long)current->mm->pgd & (~ 0xfffUL)) + ((code_start_addr >> PAGE_GDT_SHIFT) & 0x1ff));
+	if(*tmp == NULL)
+	{
+		virtual = kmalloc(PAGE_4K_SIZE,0);
+		memset(virtual,0,PAGE_4K_SIZE);
+		set_mpl4t(tmp,mk_mpl4t(Virt_To_Phy(virtual),PAGE_USER_GDT));
+	}
 
-	tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((addr >> PAGE_2M_SHIFT) & 0x1ff));
-	p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped);
-	set_pdt(tmp,mk_pdt(p->PHY_address,PAGE_USER_Page));
+	tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((code_start_addr >> PAGE_1G_SHIFT) & 0x1ff));
+	if(*tmp == NULL)
+	{
+		virtual = kmalloc(PAGE_4K_SIZE,0);
+		memset(virtual,0,PAGE_4K_SIZE);
+		set_pdpt(tmp,mk_pdpt(Virt_To_Phy(virtual),PAGE_USER_Dir));
+	}
 
-	flush_tlb();
-	
+	tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((code_start_addr >> PAGE_2M_SHIFT) & 0x1ff));
+	if(*tmp == NULL)
+	{
+		p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped);
+		set_pdt(tmp,mk_pdt(p->PHY_address,PAGE_USER_Page));
+	}
+	__asm__ __volatile__ ("movq	%0,	%%cr3	\n\t"::"r"(current->mm->pgd):"memory");
+
+
 	if(!(current->flags & PF_KTHREAD))
 		current->addr_limit = TASK_SIZE;
 
-	memcpy(user_level_function,(void *)0x800000,1024);
+	current->mm->start_code = code_start_addr;
+	current->mm->end_code = 0;
+	current->mm->start_data = 0;
+	current->mm->end_data = 0;
+	current->mm->start_rodata = 0;
+	current->mm->end_rodata = 0;
+	current->mm->start_bss = 0;
+	current->mm->end_bss = 0;
+	current->mm->start_brk = brk_start_addr;
+	current->mm->end_brk = brk_start_addr;
+	current->mm->start_stack = stack_start_addr;
+	
+	exit_files(current);
 
-	return 1;
+	current->flags &= ~PF_VFORK;
+
+	filp = open_exec_file(name);
+
+	if((unsigned long)filp > -0x1000UL)
+		return (unsigned long)filp;
+
+	memset((void *)0x800000,0,PAGE_2M_SIZE);
+	retval = filp->f_ops->read(filp,(void *)0x800000,filp->dentry->dir_inode->file_size,&pos);
+
+	return retval;
 }
 
 
 unsigned long init(unsigned long arg)
 {
-	struct pt_regs *regs;
-
 	DISK1_FAT32_FS_init();
 
 	color_printk(RED,BLACK,"init task is running,arg:%#018lx\n",arg);
 
 	current->thread->rip = (unsigned long)ret_system_call;
 	current->thread->rsp = (unsigned long)current + STACK_SIZE - sizeof(struct pt_regs);
-	regs = (struct pt_regs *)current->thread->rsp;
-	current->flags = 0;
+	current->thread->gs = USER_DS;
+	current->thread->fs = USER_DS;
+	current->flags &= ~PF_KTHREAD;
 
 	__asm__	__volatile__	(	"movq	%1,	%%rsp	\n\t"
 					"pushq	%2		\n\t"
 					"jmp	do_execve	\n\t"
-					::"D"(regs),"m"(current->thread->rsp),"m"(current->thread->rip):"memory");
+					:
+					:"D"(current->thread->rsp),"m"(current->thread->rsp),"m"(current->thread->rip),"S"("/init.bin")
+					:"memory"
+				);
 
 	return 1;
 }
@@ -273,52 +216,229 @@ __asm__ (
 );
 
 
-
-unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned long stack_start, unsigned long stack_size)
+inline void wakeup_process(struct task_struct *tsk)
 {
-	struct task_struct *tsk = NULL;
-	struct thread_struct *thd = NULL;
-	struct Page *p = NULL;
+	tsk->state = TASK_RUNNING;
+	insert_task_queue(tsk);
+}
+
+unsigned long copy_flags(unsigned long clone_flags,struct task_struct *tsk)
+{
+	if(clone_flags & CLONE_VM)
+		tsk->flags |= PF_VFORK;
+	return 0;
+}
+
+unsigned long copy_files(unsigned long clone_flags,struct task_struct *tsk)
+{
+	int error = 0;
+	int i = 0;
+	if(clone_flags & CLONE_FS)
+		goto out;
 	
-	color_printk(WHITE,BLACK,"alloc_pages,bitmap:%#018lx\n",*memory_management_struct.bits_map);
+	for(i = 0;i<TASK_FILE_MAX;i++)
+		if(current->file_struct[i] != NULL)
+		{
+			tsk->file_struct[i] = (struct file *)kmalloc(sizeof(struct file),0);
+			memcpy(current->file_struct[i],tsk->file_struct[i],sizeof(struct file));
+		}
+out:
+	return error;
+}
+void exit_files(struct task_struct *tsk)
+{
+	int i = 0;
+	if(tsk->flags & PF_VFORK)
+		;
+	else
+		for(i = 0;i<TASK_FILE_MAX;i++)
+			if(tsk->file_struct[i] != NULL)
+			{
+				kfree(tsk->file_struct[i]);
+			}
 
-	p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped | PG_Kernel);
+	memset(tsk->file_struct,0,sizeof(struct file *) * TASK_FILE_MAX);	//clear current->file_struct
+}
 
-	color_printk(WHITE,BLACK,"alloc_pages,bitmap:%#018lx\n",*memory_management_struct.bits_map);
 
-	tsk = (struct task_struct *)Phy_To_Virt(p->PHY_address);
-	color_printk(WHITE,BLACK,"struct task_struct address:%#018lx\n",(unsigned long)tsk);
+unsigned long copy_mm(unsigned long clone_flags,struct task_struct *tsk)
+{
+	int error = 0;
+	struct mm_struct *newmm = NULL;
+	unsigned long code_start_addr = 0x800000;
+	unsigned long stack_start_addr = 0xa00000;
+	unsigned long brk_start_addr = 0xc00000;
+	unsigned long * tmp;
+	unsigned long * virtual = NULL;
+	struct Page * p = NULL;
 
-	memset(tsk,0,sizeof(*tsk));
-	*tsk = *current;
+	if(clone_flags & CLONE_VM)
+	{
+		newmm = current->mm;
+		goto out;
+	}
 
-	list_init(&tsk->list);
+	newmm = (struct mm_struct *)kmalloc(sizeof(struct mm_struct),0);
+	memcpy(current->mm,newmm,sizeof(struct mm_struct));
 
-	tsk->priority = 2;
-	tsk->pid++;
-	tsk->preempt_count = 0;
-	tsk->cpu_id = SMP_cpu_id();
-	tsk->state = TASK_UNINTERRUPTIBLE;
+	newmm->pgd = (pml4t_t *)Virt_To_Phy(kmalloc(PAGE_4K_SIZE,0));
+	memcpy(Phy_To_Virt(init_task[SMP_cpu_id()]->mm->pgd)+256,Phy_To_Virt(newmm->pgd)+256,PAGE_4K_SIZE/2);	//copy kernel space
+
+	memset(Phy_To_Virt(newmm->pgd),0,PAGE_4K_SIZE/2);	//copy user code & data & bss space
+
+	tmp = Phy_To_Virt((unsigned long *)((unsigned long)newmm->pgd & (~ 0xfffUL)) + ((code_start_addr >> PAGE_GDT_SHIFT) & 0x1ff));
+	virtual = kmalloc(PAGE_4K_SIZE,0);
+	memset(virtual,0,PAGE_4K_SIZE);
+	set_mpl4t(tmp,mk_mpl4t(Virt_To_Phy(virtual),PAGE_USER_GDT));
+
+	tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((code_start_addr >> PAGE_1G_SHIFT) & 0x1ff));
+	virtual = kmalloc(PAGE_4K_SIZE,0);
+	memset(virtual,0,PAGE_4K_SIZE);
+	set_pdpt(tmp,mk_pdpt(Virt_To_Phy(virtual),PAGE_USER_Dir));
+
+	tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((code_start_addr >> PAGE_2M_SHIFT) & 0x1ff));
+	p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped);
+	set_pdt(tmp,mk_pdt(p->PHY_address,PAGE_USER_Page));	
+
+	memcpy((void *)code_start_addr,Phy_To_Virt(p->PHY_address),stack_start_addr - code_start_addr);
+
+	////copy user brk space
+	if(current->mm->end_brk - current->mm->start_brk != 0)
+	{
+		tmp = Phy_To_Virt((unsigned long *)((unsigned long)newmm->pgd & (~ 0xfffUL)) + ((brk_start_addr >> PAGE_GDT_SHIFT) & 0x1ff));
+		tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((brk_start_addr >> PAGE_1G_SHIFT) & 0x1ff));
+		tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((brk_start_addr >> PAGE_2M_SHIFT) & 0x1ff));
+		p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped);
+		set_pdt(tmp,mk_pdt(p->PHY_address,PAGE_USER_Page));
+
+		memcpy((void *)brk_start_addr,Phy_To_Virt(p->PHY_address),PAGE_2M_SIZE);
+	}
+
+out:
+	tsk->mm = newmm;
+	return error;
+}
+void exit_mm(struct task_struct *tsk)
+{
+	unsigned long code_start_addr = 0x800000;
+	unsigned long * tmp4;
+	unsigned long * tmp3;
+	unsigned long * tmp2;
+	
+	if(tsk->flags & PF_VFORK)
+		return;
+
+	if(tsk->mm->pgd != NULL)
+	{
+		tmp4 = Phy_To_Virt((unsigned long *)((unsigned long)tsk->mm->pgd & (~ 0xfffUL)) + ((code_start_addr >> PAGE_GDT_SHIFT) & 0x1ff));
+		tmp3 = Phy_To_Virt((unsigned long *)(*tmp4 & (~ 0xfffUL)) + ((code_start_addr >> PAGE_1G_SHIFT) & 0x1ff));
+		tmp2 = Phy_To_Virt((unsigned long *)(*tmp3 & (~ 0xfffUL)) + ((code_start_addr >> PAGE_2M_SHIFT) & 0x1ff));
+		
+		free_pages(Phy_to_2M_Page(*tmp2),1);
+		kfree(Phy_To_Virt(*tmp3));
+		kfree(Phy_To_Virt(*tmp4));
+		kfree(Phy_To_Virt(tsk->mm->pgd));
+	}
+	if(tsk->mm != NULL)
+		kfree(tsk->mm);
+}
+
+
+unsigned long copy_thread(unsigned long clone_flags,unsigned long stack_start,unsigned long stack_size,struct task_struct *tsk,struct pt_regs * regs)
+{
+	struct thread_struct *thd = NULL;
+	struct pt_regs *childregs = NULL;
 
 	thd = (struct thread_struct *)(tsk + 1);
 	memset(thd,0,sizeof(*thd));
 	tsk->thread = thd;
 
-	memcpy(regs,(void *)((unsigned long)tsk + STACK_SIZE - sizeof(struct pt_regs)),sizeof(struct pt_regs));
+	childregs = (struct pt_regs *)((unsigned long)tsk + STACK_SIZE) - 1;
+
+	memcpy(regs,childregs,sizeof(struct pt_regs));
+	childregs->rax = 0;
+	childregs->rsp = stack_start;
 
 	thd->rsp0 = (unsigned long)tsk + STACK_SIZE;
-	thd->rip = regs->rip;
-	thd->rsp = (unsigned long)tsk + STACK_SIZE - sizeof(struct pt_regs);
-	thd->fs = KERNEL_DS;
-	thd->gs = KERNEL_DS;
+	thd->rsp = (unsigned long)childregs;
+	thd->fs = current->thread->fs;
+	thd->gs = current->thread->gs;
 
-	if(!(tsk->flags & PF_KTHREAD))
-		thd->rip = regs->rip = (unsigned long)ret_system_call;
+	if(tsk->flags & PF_KTHREAD)
+		thd->rip = (unsigned long)kernel_thread_func;
+	else
+		thd->rip = (unsigned long)ret_system_call; 
 
-	tsk->state = TASK_RUNNING;
-	insert_task_queue(tsk);
+	color_printk(WHITE,BLACK,"current user ret addr:%#018lx,rsp:%#018lx\n",regs->r10,regs->r11);
+	color_printk(WHITE,BLACK,"new user ret addr:%#018lx,rsp:%#018lx\n",childregs->r10,childregs->r11);
 
-	return 1;
+	return 0;
+}
+void exit_thread(struct task_struct *tsk){}
+
+
+unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned long stack_start, unsigned long stack_size)
+{
+	int retval = 0;
+	struct task_struct *tsk = NULL;
+
+//	alloc & copy task struct
+	tsk = (struct task_struct *)kmalloc(STACK_SIZE,0);
+	color_printk(WHITE,BLACK,"struct task_struct address:%#018lx\n",(unsigned long)tsk);
+
+	if(tsk == NULL)
+	{
+		retval = -EAGAIN;
+		goto alloc_copy_task_fail;
+	}
+
+	memset(tsk,0,sizeof(*tsk));
+	memcpy(current,tsk,sizeof(struct task_struct));
+
+	list_init(&tsk->list);
+	tsk->priority = 2;
+	tsk->pid = global_pid++;
+	tsk->preempt_count = 0;
+	tsk->cpu_id = SMP_cpu_id();
+	tsk->state = TASK_UNINTERRUPTIBLE;
+	tsk->next = init_task_union.task.next;
+	init_task_union.task.next = tsk;
+	tsk->parent = current;
+
+	retval = -ENOMEM;
+//	copy flags
+	if(copy_flags(clone_flags,tsk))
+		goto copy_flags_fail;
+
+//	copy mm struct
+	if(copy_mm(clone_flags,tsk))
+		goto copy_mm_fail;
+
+//	copy file struct
+	if(copy_files(clone_flags,tsk))
+		goto copy_files_fail;
+
+//	copy thread struct
+	if(copy_thread(clone_flags,stack_start,stack_size,tsk,regs))
+		goto copy_thread_fail;
+
+	retval = tsk->pid;
+	wakeup_process(tsk);
+
+fork_ok:
+	return retval;
+
+copy_thread_fail:
+	exit_thread(tsk);
+copy_files_fail:
+	exit_files(tsk);
+copy_mm_fail:
+	exit_mm(tsk);
+copy_flags_fail:
+alloc_copy_task_fail:
+	kfree(tsk);
+
+	return retval;
 }
 
 
@@ -327,6 +447,7 @@ unsigned long do_exit(unsigned long exit_code)
 	color_printk(RED,BLACK,"exit task is running,arg:%#018lx\n",exit_code);
 	while(1);
 }
+
 
 int kernel_thread(unsigned long (* fn)(unsigned long), unsigned long arg, unsigned long flags)
 {
@@ -343,10 +464,13 @@ int kernel_thread(unsigned long (* fn)(unsigned long), unsigned long arg, unsign
 	regs.rflags = (1 << 9);
 	regs.rip = (unsigned long)kernel_thread_func;
 
-	return do_fork(&regs,flags,0,0);
+	return do_fork(&regs,flags | CLONE_VM,0,0);
 }
 
-
+inline void switch_mm(struct task_struct *prev,struct task_struct *next)
+{
+	__asm__ __volatile__ ("movq	%0,	%%cr3	\n\t"::"r"(next->mm->pgd):"memory");
+}
 
 inline void __switch_to(struct task_struct *prev,struct task_struct *next)
 {
@@ -367,6 +491,26 @@ inline void __switch_to(struct task_struct *prev,struct task_struct *next)
 
 void task_init()
 {
+	unsigned long * tmp = NULL;
+	unsigned long * vaddr = NULL;
+	int i = 0;
+
+	vaddr = (unsigned long *)Phy_To_Virt((unsigned long)Get_gdt() & (~ 0xfffUL));
+
+	*vaddr = 0UL;
+	
+	for(i = 256;i<512;i++)
+	{
+		tmp = vaddr + i;
+
+		if(*tmp == 0)
+		{			
+			unsigned long * virtual = kmalloc(PAGE_4K_SIZE,0);
+			memset(virtual,0,PAGE_4K_SIZE);
+			set_mpl4t(tmp,mk_mpl4t(Virt_To_Phy(virtual),PAGE_KERNEL_GDT));
+		}
+	}
+
 	init_mm.pgd = (pml4t_t *)Get_gdt();
 
 	init_mm.start_code = memory_management_struct.start_code;
@@ -376,10 +520,13 @@ void task_init()
 	init_mm.end_data = memory_management_struct.end_data;
 
 	init_mm.start_rodata = (unsigned long)&_rodata; 
-	init_mm.end_rodata = (unsigned long)&_erodata;
+	init_mm.end_rodata = memory_management_struct.end_rodata;
 
-	init_mm.start_brk = 0;
-	init_mm.end_brk = memory_management_struct.end_brk;
+	init_mm.start_bss = (unsigned long)&_bss;
+	init_mm.end_bss = (unsigned long)&_ebss;
+
+	init_mm.start_brk = memory_management_struct.start_brk;
+	init_mm.end_brk = current->addr_limit;
 
 	init_mm.start_stack = _stack_start;
 	
@@ -394,10 +541,12 @@ void task_init()
 
 	list_init(&init_task_union.task.list);
 
-	kernel_thread(init,10,CLONE_FS | CLONE_FILES | CLONE_SIGNAL);
+	kernel_thread(init,10,CLONE_FS | CLONE_SIGNAL);
 
 	init_task_union.task.preempt_count = 0;
 	init_task_union.task.state = TASK_RUNNING;
 	init_task_union.task.cpu_id = 0;
 }
+
+
 

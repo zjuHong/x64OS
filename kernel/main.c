@@ -29,13 +29,12 @@
 	static var 
 */
 
-struct Global_Memory_Descriptor memory_management_struct = {{0},0};
 struct KERNEL_BOOT_PARAMETER_INFORMATION *boot_para_info = (struct KERNEL_BOOT_PARAMETER_INFORMATION *)0xffff800000060000;
 
 void Start_Kernel(void)
 {
 	unsigned int i;
-	char buf[512];
+
 	unsigned char * ptr = NULL;
 
 	memset((void*)&_bss,0,(unsigned long)&_end-(unsigned long)&_bss);
@@ -51,12 +50,13 @@ void Start_Kernel(void)
 
 	Pos.FB_addr = (int *)0xffff800003000000;
 	Pos.FB_length = boot_para_info->Graphics_Info.FrameBufferSize;
+	global_pid = 1;
 	
 	spin_init(&Pos.printk_lock);
 	
 	load_TR(10);
 
-	set_tss64(TSS64_Table,_stack_start, _stack_start, _stack_start, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
+	set_tss64((unsigned int *)&init_tss[0],_stack_start, _stack_start, _stack_start, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
 
 	sys_vector_init();
 
@@ -75,6 +75,15 @@ void Start_Kernel(void)
 	slab_init();
 	
 	ptr = (unsigned char *)kmalloc(STACK_SIZE,0) + STACK_SIZE;
+	((struct task_struct *)(ptr - STACK_SIZE))->cpu_id = 0;
+		
+	init_tss[0].ist1 = (unsigned long)ptr;
+	init_tss[0].ist2 = (unsigned long)ptr;
+	init_tss[0].ist3 = (unsigned long)ptr;
+	init_tss[0].ist4 = (unsigned long)ptr;
+	init_tss[0].ist5 = (unsigned long)ptr;
+	init_tss[0].ist6 = (unsigned long)ptr;
+	init_tss[0].ist7 = (unsigned long)ptr;
 		
 	color_printk(RED,BLACK,"frame buffer init \n");
 	frame_buffer_init();

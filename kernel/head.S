@@ -79,7 +79,7 @@ rp_sidt:
 	jne	rp_sidt
 
 setup_TSS64:
-	leaq	TSS64_Table(%rip),	%rdx
+	leaq	init_tss(%rip),	%rdx
 	xorq	%rax,	%rax
 	xorq	%rcx,	%rcx
 	movq	$0x89,	%rax
@@ -285,11 +285,3 @@ IDT_END:
 IDT_POINTER:
 IDT_LIMIT:	.word	IDT_END - IDT_Table - 1
 IDT_BASE:	.quad	IDT_Table
-
-//=======	TSS64_Table
-
-.globl	TSS64_Table
-
-TSS64_Table:
-	.fill  13,8,0
-TSS64_END:

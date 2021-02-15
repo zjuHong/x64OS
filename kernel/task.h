@@ -14,10 +14,6 @@
 #define	USER_CS		(0x28)
 #define USER_DS		(0x30)
 
-#define CLONE_FS	(1 << 0)
-#define CLONE_FILES	(1 << 1)
-#define CLONE_SIGNAL	(1 << 2)
-
 // stack size 32K
 #define STACK_SIZE 32768
 
@@ -32,6 +28,7 @@ extern char _ebss;
 extern char _end;
 
 extern unsigned long _stack_start;
+extern long global_pid;
 
 /*
 
@@ -55,6 +52,7 @@ struct mm_struct
 	unsigned long start_code,end_code;
 	unsigned long start_data,end_data;
 	unsigned long start_rodata,end_rodata;
+	unsigned long start_bss,end_bss;
 	unsigned long start_brk,end_brk;
 	unsigned long start_stack;
 };
@@ -104,12 +102,16 @@ struct task_struct
 	long vrun_time;
 
 	struct file * file_struct[TASK_FILE_MAX];
+
+	struct task_struct *next;
+	struct task_struct *parent;
 };
 
 ///////struct task_struct->flags:
 
 #define PF_KTHREAD	(1UL << 0)
 #define NEED_SCHEDULE	(1UL << 1)
+#define PF_VFORK	(1UL << 2)
 
 
 union task_union
@@ -133,7 +135,9 @@ union task_union
 	.pid = 0,			\
 	.priority = 2,		\
 	.vrun_time = 0,		\
-	.file_struct = {0}	\
+	.file_struct = {0},	\
+	.next = &tsk,		\
+	.parent = &tsk,		\
 }
 
 /*
@@ -223,12 +227,19 @@ do{							\
 /*
 
 */
+long get_pid();
+struct task_struct *get_task(long pid);
+
+inline void wakeup_process(struct task_struct *tsk);
+void exit_files(struct task_struct *tsk);
 
 unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned long stack_start, unsigned long stack_size);
-unsigned long do_execve(struct pt_regs * regs);
-unsigned long do_exit(unsigned long code);
+unsigned long do_execve(struct pt_regs *regs,char *name);
+unsigned long do_exit(unsigned long exit_code);
 
 void task_init();
+
+inline void switch_mm(struct task_struct *prev,struct task_struct *next);
 
 extern void ret_system_call(void);
 extern void system_call(void);

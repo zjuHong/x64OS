@@ -1,14 +1,13 @@
 OUTPUT_FORMAT("elf64-x86-64","elf64-x86-64","elf64-x86-64")
 OUTPUT_ARCH(i386:x86-64)
-ENTRY(_start)
+ENTRY(main)
 SECTIONS
 {
-
-	. = 0xffff800000000000 + 0x100000;
+	. = 0x800000;
 	.text :
 	{
 		_text = .;
-		head.o(.text);
+		init.o(.text);
 		*(.text)
 		_etext = .;
 	}
@@ -28,9 +27,6 @@ SECTIONS
 		*(.rodata)
 		_erodata = .;
 	}
-
-	. = ALIGN(32768);
-	.data.init_task : { *(.data.init_task) }
 
 	.bss :
 	{

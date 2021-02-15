@@ -1,6 +1,6 @@
 #include "HPET.h"
 #include "printk.h"
-#include "memory.h"
+
 #include "lib.h"
 #include "APIC.h"
 #include "time.h"
@@ -8,6 +8,7 @@
 #include "softirq.h"
 #include "task.h"
 #include "schedule.h"
+#include "SMP.h"
 
 hw_int_controller HPET_int_controller = 
 {
@@ -21,7 +22,7 @@ hw_int_controller HPET_int_controller =
 void HPET_handler(unsigned long nr, unsigned long parameter, struct pt_regs * regs)
 {
 	jiffies++;
-	
+
 	if((container_of(list_next(&timer_list_head.list),struct timer_list,list)->expire_jiffies <= jiffies))
 		set_softirq_status(TIMER_SIRQ);
 	
@@ -29,26 +30,27 @@ void HPET_handler(unsigned long nr, unsigned long parameter, struct pt_regs * re
 	{
 		case 0:
 		case 1:
-			task_schedule.CPU_exec_task_jiffies--;
+			task_schedule[SMP_cpu_id()].CPU_exec_task_jiffies--;
 			current->vrun_time += 1;
 			break;
 		case 2:
 		default:
-			task_schedule.CPU_exec_task_jiffies -= 2;
+
+			task_schedule[SMP_cpu_id()].CPU_exec_task_jiffies -= 2;
 			current->vrun_time += 2;
 			break;
 	}
 
-	if(task_schedule.CPU_exec_task_jiffies <= 0)
+	if(task_schedule[SMP_cpu_id()].CPU_exec_task_jiffies <= 0)
 		current->flags |= NEED_SCHEDULE;
 }
 
-extern struct time time;
-	
+
+
 void HPET_init()
 {
 	unsigned int x;
-	unsigned int * p;
+	unsigned int * p = NULL;
 	unsigned char * HPET_addr = (unsigned char *)Phy_To_Virt(0xfed00000);
 	struct IO_APIC_RET_entry entry;
 	
@@ -84,7 +86,7 @@ void HPET_init()
 
 	register_irq(34, &entry , &HPET_handler, NULL, &HPET_int_controller, "HPET");
 	
-	color_printk(RED,BLACK,"HPET - GCAP_ID:<%#018lx>\n",*(unsigned long *)HPET_addr);
+//	color_printk(RED,BLACK,"HPET - GCAP_ID:<%#018lx>\n",*(unsigned long *)HPET_addr);
 
 	*(unsigned long *)(HPET_addr + 0x10) = 3;
 	io_mfence();
@@ -102,6 +104,6 @@ void HPET_init()
 	*(unsigned long *)(HPET_addr + 0xf0) = 0;
 	io_mfence();
 	
-	color_printk(RED,BLACK,"year:%#010x,month:%#010x,day:%#010x,hour:%#010x,mintue:%#010x,second:%#010x\n",time.year,time.month,time.day,time.hour,time.minute,time.second);
+//	color_printk(RED,BLACK,"year:%#010x,month:%#010x,day:%#010x,hour:%#010x,mintue:%#010x,second:%#010x\n",time.year,time.month,time.day,time.hour,time.minute,time.second);
 }
 
