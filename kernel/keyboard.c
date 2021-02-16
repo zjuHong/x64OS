@@ -4,6 +4,22 @@
 #include "APIC.h"
 #include "memory.h"
 #include "printk.h"
+#include "shell_cmd.h"
+
+
+struct	buildincmd shell_internal_cmd[] = 
+{
+	{"cd",cd_command},
+	{"ls",ls_command},
+	{"pwd",pwd_command},
+	{"cat",cat_command},
+	{"touch",touch_command},
+	{"rm",rm_command},
+	{"mkdir",mkdir_command},
+	{"rmdir",rmdir_command},
+	{"exec",exec_command},
+	{"reboot",reboot_command},
+};
 
 /*
 
@@ -16,7 +32,7 @@ void keyboard_handler(unsigned long nr, unsigned long parameter, struct pt_regs 
 {
 	unsigned char x;
 	x = io_in8(0x60);
-	color_printk(WHITE,BLACK,"(K:%02x)",x);
+	// color_printk(WHITE,BLACK,"(K:%02x)",x);
 
 	if(p_kb->p_head == p_kb->buf + KB_BUF_SIZE)
 		p_kb->p_head = p_kb->buf;
@@ -52,7 +68,7 @@ unsigned char get_scancode()
 
 */
 
-void analysis_keycode()
+int analysis_keycode()
 {
 	unsigned char x = 0;
 	int i;	
@@ -164,6 +180,10 @@ void analysis_keycode()
 				key = 0;
 				break;
 
+			case 0x1c:	//ENTER:
+				key = '\n';
+				break;
+
 			default:
 				if(!make)
 					key = 0;
@@ -171,8 +191,10 @@ void analysis_keycode()
 		}			
 
 		if(key)
-			color_printk(RED,YELLOW,"(K:%c)\t",key);
+			return key;
+			//color_printk(RED,YELLOW,"(K:%c)\t",key);
 	}
+	return 0;
 }
 
 
@@ -244,4 +266,93 @@ void keyboard_exit()
 {
 	unregister_irq(0x21);
 	kfree((unsigned long *)p_kb);
+}
+
+/*
+
+*/
+int read_line(int fd,char *buf)
+{
+	int key = 0;
+	int count = 0;
+
+	while(1)
+	{
+		key = analysis_keycode();
+		if(key == '\n')
+		{
+			return count;
+		}
+		else if(key)
+		{
+			buf[count++] = key;
+			color_printk(WHITE,BLACK,"%c",key);
+		}			
+		else
+			continue;
+	}
+}
+
+/*
+
+*/
+int find_cmd(char *cmd)
+{
+	int i = 0;
+	for(i = 0;i<sizeof(shell_internal_cmd)/sizeof(struct buildincmd);i++)
+		if(!strcmp(cmd,shell_internal_cmd[i].name))
+			return i;
+	return -1;
+}
+
+/*
+
+*/
+void run_command(int index,int argc,char **argv)
+{
+	color_printk(WHITE,BLACK,"run_command %s\n",shell_internal_cmd[index].name);
+	shell_internal_cmd[index].function(argc,argv);
+}
+
+/*
+
+*/
+int parse_command(char * buf,int * argc,char ***argv)
+{
+	int i = 0;
+	int j = 0;
+
+	while(buf[j] == ' ')
+		j++;
+
+	for(i = j;i<256;i++)
+	{
+		if(!buf[i])
+			break;
+		if(buf[i] != ' ' && (buf[i+1] == ' ' || buf[i+1] == '\0'))
+			(*argc)++;
+	}
+
+	color_printk(WHITE,BLACK,"parse_command argc:%d\n",*argc);
+
+	if(!*argc)
+		return -1;
+
+	*argv = (char **)kmalloc(sizeof(char**) * (*argc), 0);
+
+	color_printk(WHITE,BLACK,"parse_command argv:%#018lx,*argv:%#018lx\n",argv,*argv);
+	
+	for(i = 0;i < *argc && j < 256;i++)
+	{
+		*((*argv)+i) = &buf[j];
+
+		while(buf[j] && buf[j] != ' ')
+			j++;
+		buf[j++] = '\0';
+		while(buf[j] == ' ')
+			j++;
+		color_printk(WHITE,BLACK,"%s\n",(*argv)[i]);
+	}
+
+	return find_cmd(**argv);
 }

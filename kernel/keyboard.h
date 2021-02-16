@@ -16,6 +16,12 @@ struct keyboard_inputbuffer
 	unsigned char buf[KB_BUF_SIZE];
 };
 
+struct	buildincmd
+{
+	char *name;
+	int (*function)(int,char**);
+};
+
 /*
 
 */
@@ -203,12 +209,27 @@ void keyboard_exit();
 
 */
 
-void analysis_keycode();
+int analysis_keycode();
 
 /*
 
 */
 
 unsigned char get_scancode();
+
+/*
+
+*/
+int read_line(int fd,char *buf);
+
+/*
+
+*/
+int parse_command(char * buf,int * argc,char ***argv);
+
+/*
+
+*/
+void run_command(int index,int argc,char **argv);
 
 #endif

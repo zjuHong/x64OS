@@ -220,6 +220,7 @@ inline void wakeup_process(struct task_struct *tsk)
 {
 	tsk->state = TASK_RUNNING;
 	insert_task_queue(tsk);
+	current->flags |= NEED_SCHEDULE;
 }
 
 unsigned long copy_flags(unsigned long clone_flags,struct task_struct *tsk)

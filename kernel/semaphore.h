@@ -38,6 +38,7 @@ void __up(semaphore_T * semaphore)
 	list_del(&wait->wait_list);
 	wait->tsk->state = TASK_RUNNING;
 	insert_task_queue(wait->tsk);
+	current->flags |= NEED_SCHEDULE;
 }
 
 void semaphore_up(semaphore_T * semaphore)

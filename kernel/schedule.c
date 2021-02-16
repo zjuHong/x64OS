@@ -48,7 +48,8 @@ void insert_task_queue(struct task_struct *tsk)
 
 void schedule()
 {
-	struct task_struct *tsk = NULL;
+}
+/*	struct task_struct *tsk = NULL;
 	long cpu_id = SMP_cpu_id();
 
 	cli();
@@ -99,7 +100,7 @@ void schedule()
 
 	sti();
 }
-
+*/
 void schedule_init()
 {
 	int i = 0;

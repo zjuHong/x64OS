@@ -38,7 +38,7 @@ void del_timer(struct timer_list * timer)
 
 void test_timer(void * data)
 {
-	color_printk(BLUE,WHITE,"test_timer");
+	//color_printk(BLUE,WHITE,"test_timer");
 }
 
 void timer_init()
@@ -64,5 +64,5 @@ void do_timer(void * data)
 		jiffies = 0;
 	}
 
-	color_printk(RED,WHITE,"(HPET:%ld)",jiffies);
+	//color_printk(RED,WHITE,"(HPET:%ld)",jiffies);
 }

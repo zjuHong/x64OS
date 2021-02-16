@@ -34,6 +34,12 @@ struct KERNEL_BOOT_PARAMETER_INFORMATION *boot_para_info = (struct KERNEL_BOOT_P
 void Start_Kernel(void)
 {
 	unsigned int i;
+	int argc = 0;
+	char **argv = NULL;
+	int index = -1;
+	int fd = 0;
+	int count = 0;
+	unsigned char buf[256] = {0};
 
 	unsigned char * ptr = NULL;
 
@@ -126,9 +132,26 @@ void Start_Kernel(void)
 	color_printk(RED,BLACK,"start while(1) \n");
 	while(1)
 	{
-		if (p_kb->count)
-			analysis_keycode();
-		if (p_mouse->count)
-			analysis_mousecode();
+		color_printk(WHITE,BLACK,"[SHELL]#:");
+		memset(buf,0,256);
+		count = read_line(fd,buf);
+		if (count == 0)
+			continue;
+
+		color_printk(WHITE,BLACK,"\n");
+		index = parse_command(buf,&argc,&argv);
+
+		if(index < 0)
+			color_printk(WHITE,BLACK,"Input Error,No Command Found!\n");
+		else
+			run_command(index,argc,argv);	//argc,argv
+
 	}
+	// while(1)
+	// {
+	// 	if (p_kb->count)
+	// 		analysis_keycode();
+	// 	if (p_mouse->count)
+	// 		analysis_mousecode();
+	// }
 }

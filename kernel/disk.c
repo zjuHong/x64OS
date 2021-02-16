@@ -19,7 +19,8 @@ void end_request(struct block_buffer_node * node)
 
 	node->wait_queue.tsk->state = TASK_RUNNING;
 	insert_task_queue(node->wait_queue.tsk);
-	node->wait_queue.tsk->flags |= NEED_SCHEDULE;
+	//node->wait_queue.tsk->flags |= NEED_SCHEDULE;
+	current->flags |= NEED_SCHEDULE;
 
 	kfree((unsigned long *)disk_request.in_using);
 	disk_request.in_using = NULL;

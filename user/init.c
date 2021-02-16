@@ -15,7 +15,7 @@ int main()
 	read(fd,buf,30);
 	close(fd);
 	putstring(buf);
-
+/*
 	if(fork() == 0)
 		putstring("child process\n");
 	else
@@ -23,7 +23,7 @@ int main()
 		putstring("parent process\n");
 		malloc(100);
 	}	
-
+*/
 	while(1);
 	return 0;
 }
