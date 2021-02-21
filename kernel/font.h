@@ -1,6 +1,6 @@
 #ifndef __FONT_H__
 #define __FONT_H__
-
+//字符的像素点矩阵，位图中1的位写入字体颜色值，为0的位写入背景颜色值
 unsigned char font_ascii[256][16]=
 {
 	/*	0000	*/

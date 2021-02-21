@@ -45,7 +45,7 @@ void Start_Kernel(void)
 
 	memset((void*)&_bss,0,(unsigned long)&_end-(unsigned long)&_bss);
 
-	Pos.XResolution = boot_para_info->Graphics_Info.HorizontalResolution;
+	Pos.XResolution = boot_para_info->Graphics_Info.HorizontalResolution;//使用引导程序获取的屏幕的信息
 	Pos.YResolution = boot_para_info->Graphics_Info.VerticalResolution;
 
 	Pos.XPosition = 0;

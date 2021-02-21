@@ -1,7 +1,7 @@
 #ifndef __ATOMIC_H__
 
 #define __ATOMIC_H__
-
+//原子变量，通过lock指令，执行时会锁住硬件系统的前端总线，防止其他处理器访问内存
 typedef struct 
 {
 	__volatile__ long value;

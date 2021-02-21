@@ -72,12 +72,14 @@ void Local_APIC_edge_level_ack(unsigned long irq)
 				:::"memory");
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 读rte寄存器
+ * @param 
+ * 		-index 索引
+ * @return 
+ */
 unsigned long ioapic_rte_read(unsigned char index)
-{
+{//IOWIN寄存器位宽只有32位，因此需要两次
 	unsigned long ret;
 
 	*ioapic_map.virtual_index_address = index + 1;
@@ -94,10 +96,13 @@ unsigned long ioapic_rte_read(unsigned char index)
 	return ret;
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 写rte寄存器
+ * @param 
+ * 		-index 索引
+ * 		-value 值
+ * @return 
+ */
 void ioapic_rte_write(unsigned char index,unsigned long value)
 {
 	*ioapic_map.virtual_index_address = index;
@@ -112,10 +117,11 @@ void ioapic_rte_write(unsigned char index,unsigned long value)
 	io_mfence();
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 对APIC进行地址重映射，将物理地址0xfec00000映射到0xffff8000fec00000处
+ * @param 
+ * @return 
+ */
 void IOAPIC_pagetable_remap()
 {
 	unsigned long * tmp;
@@ -157,10 +163,11 @@ void IOAPIC_pagetable_remap()
 	flush_tlb();
 }
 
-/*
-
-*/
-
+/** 
+ * @brief Local APIC初始化
+ * @param 
+ * @return 
+ */
 void Local_APIC_init()
 {
 	unsigned int x,y;
@@ -181,7 +188,8 @@ void Local_APIC_init()
 	else
 		color_printk(WHITE,BLACK,"HW NO support x2APIC\n");
 */
-	//enable xAPIC & x2APIC
+	//置位IA32_APIC_BASE寄存器的寄存器位，并回写，开启xAPIC & x2APIC
+	//rdmsr指令用于读msr寄存器，rcx寄存器索引地址，edx：eax保持访问值
 	__asm__ __volatile__(	"movq 	$0x1b,	%%rcx	\n\t"
 				"rdmsr	\n\t"
 				"bts	$10,	%%rax	\n\t"
@@ -198,7 +206,7 @@ void Local_APIC_init()
 	if(x&0xc00)
 		color_printk(WHITE,BLACK,"xAPIC & x2APIC enabled\n");
 
-	//enable SVR[8]
+	//置为SVR[8]，开启Local APIC并禁止广播EOI
 	__asm__ __volatile__(	"movq 	$0x80f,	%%rcx	\n\t"
 				"rdmsr	\n\t"
 				"bts	$8,	%%rax	\n\t"
@@ -217,7 +225,7 @@ void Local_APIC_init()
 	if(x&0x1000)
 		color_printk(WHITE,BLACK,"SVR[12] enabled\n");
 	*/
-	//get local APIC ID
+	//获取 local APIC ID
 	__asm__ __volatile__(	"movq $0x802,	%%rcx	\n\t"
 				"rdmsr	\n\t"
 				:"=a"(x),"=d"(y)
@@ -226,7 +234,7 @@ void Local_APIC_init()
 	
 	//color_printk(WHITE,BLACK,"eax:%#010x,edx:%#010x\tx2APIC ID:%#010x\n",x,y,x);
 	
-	//get local APIC version
+	//获取 local APIC 版本号
 	__asm__ __volatile__(	"movq $0x803,	%%rcx	\n\t"
 				"rdmsr	\n\t"
 				:"=a"(x),"=d"(y)
@@ -241,7 +249,7 @@ void Local_APIC_init()
 	else if( ((x & 0xff) >= 0x10) && ((x & 0xff) <= 0x15) )
 		color_printk(WHITE,BLACK,"Integrated APIC\n");
 	*/
-	//mask all LVT	
+	//屏蔽LVT的所有中断投递功能	
 	__asm__ __volatile__(	"movq 	$0x82f,	%%rcx	\n\t"	//CMCI
 				"wrmsr	\n\t"
 				"movq 	$0x832,	%%rcx	\n\t"	//Timer
@@ -262,7 +270,7 @@ void Local_APIC_init()
 
 	//color_printk(GREEN,BLACK,"Mask ALL LVT\n");
 
-	//TPR
+	//获取TPR寄存器值
 	__asm__ __volatile__(	"movq 	$0x808,	%%rcx	\n\t"
 				"rdmsr	\n\t"
 				:"=a"(x),"=d"(y)
@@ -271,7 +279,7 @@ void Local_APIC_init()
 
 	//color_printk(GREEN,BLACK,"Set LVT TPR:%#010x\t",x);
 
-	//PPR
+	//获取PPR寄存器值
 	__asm__ __volatile__(	"movq 	$0x80a,	%%rcx	\n\t"
 				"rdmsr	\n\t"
 				:"=a"(x),"=d"(y)
@@ -281,10 +289,11 @@ void Local_APIC_init()
 	//color_printk(GREEN,BLACK,"Set LVT PPR:%#010x\n",x);
 }
 
-/*
-
-*/
-
+/** 
+ * @brief IOAPIC初始化
+ * @param 
+ * @return 
+ */
 void IOAPIC_init()
 {
 	int i ;
@@ -304,15 +313,16 @@ void IOAPIC_init()
 
 	//RTE	
 	for(i = 0x10;i < 0x40;i += 2)
-		ioapic_rte_write(i,0x10020 + ((i - 0x10) >> 1));
+		ioapic_rte_write(i,0x10020 + ((i - 0x10) >> 1));//以0x20作为起始中断向量号初始化各个RTE表项
 
 	//color_printk(GREEN,BLACK,"I/O APIC Redirection Table Entries Set Finished.\n");	
 }
 
-/*
-
-*/
-
+/** 
+ * @brief APIC初始化
+ * @param 
+ * @return 
+ */
 void APIC_IOAPIC_init()
 {
 	//	init trap abort fault
@@ -327,7 +337,7 @@ void APIC_IOAPIC_init()
 		set_intr_gate(i , 0 , interrupt[i - 32]);
 	}
 
-	//mask 8259A
+	//屏蔽 8259A中断控制器
 	//color_printk(GREEN,BLACK,"MASK 8259A\n");
 	io_out8(0x21,0xff);
 	io_out8(0xa1,0xff);
@@ -343,8 +353,8 @@ void APIC_IOAPIC_init()
 	IOAPIC_init();
 /*
 	//get RCBA address
-	io_out32(0xcf8,0x8000f8f0);
-	x = io_in32(0xcfc);
+	io_out32(0xcf8,0x8000f8f0);//间接索引的方式索引到RCBA寄存器
+	x = io_in32(0xcfc);//获取RCBA寄存器值
 	color_printk(RED,BLACK,"Get RCBA Address:%#010x\n",x);	
 	x = x & 0xffffc000;
 	color_printk(RED,BLACK,"Get RCBA Address:%#010x\n",x);	
@@ -352,10 +362,10 @@ void APIC_IOAPIC_init()
 	//get OIC address
 	if(x > 0xfec00000 && x < 0xfee00000)
 	{
-		p = (unsigned int *)Phy_To_Virt(x + 0x31feUL);
+		p = (unsigned int *)Phy_To_Virt(x + 0x31feUL);//RCBA寄存器的值+0x31fe为OIC寄存器的值
 	}
 
-	//enable IOAPIC
+	//使能 IOAPIC
 	x = (*p & 0xffffff00) | 0x100;
 	io_mfence();
 	*p = x;
@@ -367,9 +377,13 @@ void APIC_IOAPIC_init()
 //	sti();
 }
 
-/*
-
-*/
+/** 
+ * @brief APIC中断处理函数
+ * @param 
+ * 		-regs：寄存器组
+ * 		-nr：索引
+ * @return 
+ */
 
 void do_IRQ(struct pt_regs * regs,unsigned long nr)	//regs:rsp,nr
 {

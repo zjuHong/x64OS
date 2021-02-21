@@ -7,9 +7,9 @@
  */
 
 
-#define CLONE_VM		(1 << 0)	/* shared Virtual Memory between processes */
-#define CLONE_FS		(1 << 1)	/* shared fs info between processes */
-#define CLONE_SIGNAL	(1 << 2)	/* shared signal between processes */
+#define CLONE_VM		(1 << 0)	/* 共享进程的地址空间 */
+#define CLONE_FS		(1 << 1)	/* 共享进程的打开文件 */
+#define CLONE_SIGNAL	(1 << 2)	/* 共享进程拥有的信号 */
 
 
 #endif

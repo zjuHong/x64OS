@@ -1,6 +1,6 @@
 #ifndef __ERRNO_H__
 #define __ERRNO_H__
-
+//错误类型：POSIX标准
 #define	E2BIG			1		/* Argument list too long or Lack of space in an output buffer or Argument is greater than the system-imposed maximum */
 #define	EACCES			2		/* Permission denied */
 #define	EADDRINUSE		3		/* Address in use */

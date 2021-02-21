@@ -1,7 +1,7 @@
 #ifndef __SYSCALL_H__
 
 #define __SYSCALL_H__
-
+//系统调用索引
 #define	__NR_putstring	1
 
 #define	__NR_open	2

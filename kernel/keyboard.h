@@ -6,7 +6,7 @@ extern struct keyboard_inputbuffer * p_kb;
 #define NR_SCAN_CODES 	0x80
 #define MAP_COLS	2
 
-#define KB_BUF_SIZE	100
+#define KB_BUF_SIZE	100	//键盘缓冲区大小
 
 struct keyboard_inputbuffer
 {
@@ -50,7 +50,7 @@ struct	buildincmd
 
 unsigned char pausebreak_scode[]={0xE1,0x1D,0x45,0xE1,0x9D,0xC5};
 
-unsigned int keycode_map_normal[NR_SCAN_CODES * MAP_COLS] = //
+unsigned int keycode_map_normal[NR_SCAN_CODES * MAP_COLS] = //映射码
 {
 /*scan-code	unShift		Shift		*/
 /*--------------------------------------------------------------*/

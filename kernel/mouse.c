@@ -10,14 +10,15 @@ struct keyboard_inputbuffer * p_mouse = NULL;
 static int mouse_count = 0;
 struct mouse_packet mouse;
 
-/*
-
-*/
-
+/** 
+ * @brief 鼠标中断处理函数
+ * @param 
+ * @return 
+ */
 void mouse_handler(unsigned long nr, unsigned long parameter, struct pt_regs * regs)
 {
 	unsigned char x;
-	x = io_in8(PORT_KB_DATA);
+	x = io_in8(PORT_KB_DATA);//从IO端口0x60读取扫描码
 	color_printk(GREEN,WHITE,"(M:%02x)",x);
 
 	if(p_mouse->p_head == p_mouse->buf + KB_BUF_SIZE)
@@ -28,10 +29,13 @@ void mouse_handler(unsigned long nr, unsigned long parameter, struct pt_regs * r
 	p_mouse->p_head ++;
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 鼠标缓冲区处理
+ * @param 
+ *
+ * @return 
+ *     -ret 缓冲区起始地址
+ */
 unsigned char get_mousecode()
 {
 	unsigned char ret  = 0;
@@ -50,10 +54,12 @@ unsigned char get_mousecode()
 	return ret;
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 解析鼠标码
+ * @param 
+ *
+ * @return 
+ */
 void analysis_mousecode()
 {
 	unsigned char x = get_mousecode();
@@ -85,6 +91,7 @@ void analysis_mousecode()
 	}
 }
 
+//鼠标中断控制器
 hw_int_controller mouse_int_controller = 
 {
 	.enable = IOAPIC_enable,
@@ -95,10 +102,11 @@ hw_int_controller mouse_int_controller =
 };
 
 
-/*
-
-*/
-
+/** 
+ * @brief 鼠标初始化程序
+ * @param 
+ * @return 
+ */
 void mouse_init()
 {
 	struct IO_APIC_RET_entry entry;
@@ -127,6 +135,7 @@ void mouse_init()
 
 	mouse_count = 0;
 
+	//中断向量号0x2c
 	register_irq(0x2c, &entry , &mouse_handler, (unsigned long)p_mouse, &mouse_int_controller, "ps/2 mouse");
 
 	wait_KB_write();
@@ -151,10 +160,11 @@ void mouse_init()
 	io_out8(PORT_KB_DATA,KB_INIT_MODE);
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 鼠标卸载程序
+ * @param 
+ * @return 
+ */
 void mouse_exit()
 {
 	unregister_irq(0x2c);

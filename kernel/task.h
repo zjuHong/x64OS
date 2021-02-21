@@ -14,9 +14,9 @@
 #define	USER_CS		(0x28)
 #define USER_DS		(0x30)
 
-// stack size 32K
+//表示进程的内核栈空间和task_struct结构体占用的存储空间总量为32KB
 #define STACK_SIZE 32768
-
+//用来表示地址的外部标号,理解成汇编级的标号
 extern char _text;
 extern char _etext;
 extern char _data;
@@ -29,6 +29,7 @@ extern char _end;
 
 extern unsigned long _stack_start;
 extern long global_pid;
+extern int fat32_init_flag;
 
 /*
 
@@ -41,81 +42,76 @@ extern long global_pid;
 #define	TASK_STOPPED		(1 << 4)
 
 /*
-
+内存空间分布结构体
 */
-
-
 struct mm_struct
 {
-	pml4t_t *pgd;	//page table point
+	pml4t_t *pgd;	//内存页表指针
 	
-	unsigned long start_code,end_code;
-	unsigned long start_data,end_data;
-	unsigned long start_rodata,end_rodata;
-	unsigned long start_bss,end_bss;
-	unsigned long start_brk,end_brk;
-	unsigned long start_stack;
+	unsigned long start_code,end_code;//代码段空间
+	unsigned long start_data,end_data;//数据段空间
+	unsigned long start_rodata,end_rodata;//只读数据段空间
+	unsigned long start_bss,end_bss;//bss段空间
+	unsigned long start_brk,end_brk;//堆区域
+	unsigned long start_stack;//应用层栈基地址
 };
 
 /*
-
+进程切换时保留的状态信息
 */
-
 struct thread_struct
 {
-	unsigned long rsp0;	//in tss
+	unsigned long rsp0;	//内核层栈基地址
 
-	unsigned long rip;
-	unsigned long rsp;	
+	unsigned long rip;//内核层代码指针
+	unsigned long rsp;//内核层当前栈指针	
 
-	unsigned long fs;
-	unsigned long gs;
+	unsigned long fs;//fs段寄存器
+	unsigned long gs;//gs段寄存器
 
-	unsigned long cr2;
-	unsigned long trap_nr;
-	unsigned long error_code;
+	unsigned long cr2;//cr2寄存器
+	unsigned long trap_nr;//产生异常的异常号
+	unsigned long error_code;//异常错误码
 };
 
-/*
-
-*/
-
 #define TASK_FILE_MAX	10
-
+/*
+进程结构体
+*/
 struct task_struct
 {
-	volatile long state;
-	unsigned long flags;
-	long preempt_count;
+	volatile long state;//进程状态
+	unsigned long flags;//进程标志
+	long preempt_count;//自旋锁数量
 	long signal;
 	long cpu_id;		//CPU ID
 
-	struct mm_struct *mm;
-	struct thread_struct *thread;
+	struct mm_struct *mm;//内存空间分布结构体
+	struct thread_struct *thread;//进程切换时保留的状态信息
 
-	struct List list;
+	struct List list;//连接各个进程控制结构体
 
 	unsigned long addr_limit;	/*0x0000,0000,0000,0000 - 0x0000,7fff,ffff,ffff user*/
 					/*0xffff,8000,0000,0000 - 0xffff,ffff,ffff,ffff kernel*/
-	long pid;
-	long priority;
-	long vrun_time;
+	long pid;//进程id号
+	long priority;//进程优先级
+	long vrun_time;//可用时间片
 
-	struct file * file_struct[TASK_FILE_MAX];
+	struct file * file_struct[TASK_FILE_MAX];//文件描述符
 
 	struct task_struct *next;
-	struct task_struct *parent;
+	struct task_struct *parent;//父进程
 };
 
 ///////struct task_struct->flags:
 
 #define PF_KTHREAD	(1UL << 0)
 #define NEED_SCHEDULE	(1UL << 1)
-#define PF_VFORK	(1UL << 2)
+#define PF_VFORK	(1UL << 2)	//当前进程的资源是否在共享
 
 
 union task_union
-{
+{//task_struct和内核层栈空间相连
 	struct task_struct task;
 	unsigned long stack[STACK_SIZE / sizeof(unsigned long)];
 }__attribute__((aligned (8)));	//8Bytes align
@@ -141,9 +137,8 @@ union task_union
 }
 
 /*
-
+tss数据结构
 */
-
 struct tss_struct
 {
 	unsigned int  reserved0;
@@ -182,11 +177,11 @@ struct tss_struct
 }
 
 
-/*
-
-*/
-
-
+/** 
+ * @brief 获取task_struct结构的地址：利用联合体的特性，将rsp按32k下边界对齐即可
+ * @param 
+ * @return 
+ */
 inline	struct task_struct * get_current()
 {
 	struct task_struct * current = NULL;
@@ -200,11 +195,13 @@ inline	struct task_struct * get_current()
 	"movq	%rsp,	%rbx	\n\t"	\
 	"andq	$-32768,%rbx	\n\t"
 
-/*
-
-*/
-
-
+/** 
+ * @brief 进程切换
+ * @param 
+ * 		-RDI保存prev结构
+ * 		-RSI保存next结构
+ * @return 
+ */
 #define switch_to(prev,next)			\
 do{							\
 	__asm__ __volatile__ (	"pushq	%%rbp	\n\t"	\
@@ -223,7 +220,9 @@ do{							\
 				:"memory"		\
 				);			\
 }while(0)
-
+//prev进程(当前进程)通过调用switch_to模块保存RSP,并指定切换回prev时的RIP值,此处默认保存到标识符1:处,随后将next进程的栈指针恢复到RSP
+//再把next的执行现场RIP压入next进程的内核层栈空间(RSP寄存器的恢复在前,此后的数据将压入next进程的内核层栈空间),最后借助JMP指令执行__switch_to
+//__switch_to会在返回过程中执行RET指令,进而跳转到next进程继续执行(恢复执行现场的RIP寄存器),至此进程间切换工作执行完毕
 /*
 
 */

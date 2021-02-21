@@ -3,9 +3,8 @@
 #define __PTRACE_H__
 
 /*
-
+执行现场数据结构
 */
-
 struct pt_regs
 {
 	unsigned long r15;

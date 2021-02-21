@@ -3,10 +3,11 @@
 #include "lib.h"
 #include "ptrace.h"
 
-/*
-
-*/
-
+/** 
+ * @brief 保存硬件中断的任务现场
+ * @param 
+ * @return 
+ */
 #define SAVE_ALL				\
 	"cld;			\n\t"		\
 	"pushq	%rax;		\n\t"		\
@@ -38,13 +39,14 @@
 
 */
 
-#define IRQ_NAME2(nr) nr##_interrupt(void)
+#define IRQ_NAME2(nr) nr##_interrupt(void) 
 #define IRQ_NAME(nr) IRQ_NAME2(IRQ##nr)
 
-/*
-
-*/
-
+/** 
+ * @brief 具体的IRQ函数，展开为void IRQnr_interrupt(void)
+ * @param 
+ * @return 
+ */
 #define Build_IRQ(nr)							\
 void IRQ_NAME(nr);						\
 __asm__ (	SYMBOL_NAME_STR(IRQ)#nr"_interrupt:		\n\t"	\
@@ -55,7 +57,7 @@ __asm__ (	SYMBOL_NAME_STR(IRQ)#nr"_interrupt:		\n\t"	\
 			"pushq	%rax				\n\t"	\
 			"movq	$"#nr",	%rsi			\n\t"	\
 			"jmp	do_IRQ	\n\t");
-
+//ieaq取得ret_from_intr返回地址，保存在中断处理函数栈内，因此do_IRQ之后执行ret_from_intr
 
 /*
 
@@ -151,10 +153,17 @@ void (* SMP_interrupt[10])(void)=
 	IRQ0xd1_interrupt,
 };
 
-/*
-
-*/
-
+/** 
+ * @brief 中断注册函数
+ * @param 
+ * 		-irq：中断号
+ * 		-arg
+ * 		-handler：处理函数
+ * 		-parameter：处理函数参数
+ * 		-controller：中断控制器
+ * 		-irq_name：中断名
+ * @return 
+ */
 int register_irq(unsigned long irq,
 		void * arg,
 		void (*handler)(unsigned long nr, unsigned long parameter, struct pt_regs * regs),
@@ -176,9 +185,12 @@ int register_irq(unsigned long irq,
 	return 1;
 }
 
-/*
-
-*/
+/** 
+ * @brief 中断注销函数
+ * @param 
+ * 		-irq：索引
+ * @return 
+ */
 
 int unregister_irq(unsigned long irq)
 {
@@ -195,44 +207,3 @@ int unregister_irq(unsigned long irq)
 
 	return 1; 
 }
-
-
-/*
-
-*/
-
-int register_IPI(unsigned long irq,
-		void * arg,
-		void (*handler)(unsigned long nr, unsigned long parameter, struct pt_regs * regs),
-		unsigned long parameter,
-		hw_int_controller * controller,
-		char * irq_name)
-{	
-	irq_desc_T * p = &SMP_IPI_desc[irq - 200];
-	
-	p->controller = NULL;
-	p->irq_name = irq_name;
-	p->parameter = parameter;
-	p->flags = 0;
-	p->handler = handler;
-	
-	return 1;
-}
-
-/*
-
-*/
-
-int unregister_IPI(unsigned long irq)
-{
-	irq_desc_T * p = &SMP_IPI_desc[irq - 200];
-
-	p->controller = NULL;
-	p->irq_name = NULL;
-	p->parameter = NULL;
-	p->flags = 0;
-	p->handler = NULL;
-
-	return 1; 
-}
-

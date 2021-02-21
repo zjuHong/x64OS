@@ -12,25 +12,39 @@ typedef struct
 	struct List wait_list;
 	struct task_struct *tsk;
 } wait_queue_T;
-
+/** 
+ * @brief 等待队列初始化
+ * @param 
+ * @return 
+ */
 void wait_queue_init(wait_queue_T * wait_queue,struct task_struct *tsk)
 {
 	list_init(&wait_queue->wait_list);
 	wait_queue->tsk = tsk;
 }
-
+/*
+信号量
+*/
 typedef struct 
 {
-	atomic_T counter;
-	wait_queue_T wait;
+	atomic_T counter;//计数器
+	wait_queue_T wait;//等待队列
 } semaphore_T;
-
+/** 
+ * @brief 信号量初始化
+ * @param 
+ * @return 
+ */
 void semaphore_init(semaphore_T * semaphore,unsigned long count)
 {
 	atomic_set(&semaphore->counter,count);
 	wait_queue_init(&semaphore->wait,NULL);
 }
-
+/** 
+ * @brief 获取信号量
+ * @param 
+ * @return 
+ */
 void __up(semaphore_T * semaphore)
 {
 	wait_queue_T * wait = container_of(list_next(&semaphore->wait.wait_list),wait_queue_T,wait_list);
@@ -48,7 +62,11 @@ void semaphore_up(semaphore_T * semaphore)
 	else
 		__up(semaphore);
 }
-
+/** 
+ * @brief 释放信号量
+ * @param 
+ * @return 
+ */
 void __down(semaphore_T * semaphore)
 {
 	wait_queue_T wait;

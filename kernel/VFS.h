@@ -2,7 +2,9 @@
 
 #define __VFS_H__
 #include "lib.h"
-
+/*
+硬盘分区表项
+*/
 struct Disk_Partition_Table_Entry
 {
 	unsigned char flags;
@@ -16,20 +18,24 @@ struct Disk_Partition_Table_Entry
 	unsigned int start_LBA;
 	unsigned int sectors_limit;
 }__attribute__((packed));
-
+/*
+硬盘分区表
+*/
 struct Disk_Partition_Table
 {
 	unsigned char BS_Reserved[446];
-	struct Disk_Partition_Table_Entry DPTE[4];
+	struct Disk_Partition_Table_Entry DPTE[4];//4个分区表项
 	unsigned short BS_TrailSig;
 }__attribute__((packed));
-
+/*
+VFS支持的文件类型
+*/
 struct file_system_type
 {
 	char * name;
 	int fs_flags;
-	struct super_block * (*read_superblock)(struct Disk_Partition_Table_Entry * DPTE,void * buf);
-	struct file_system_type * next;
+	struct super_block * (*read_superblock)(struct Disk_Partition_Table_Entry * DPTE,void * buf);//解析引导扇区的方法
+	struct file_system_type * next;//文件系统链表
 };
 
 struct super_block * mount_fs(char * name,struct Disk_Partition_Table_Entry * DPTE,void * buf);
@@ -40,16 +46,20 @@ struct super_block_operations;
 struct index_node_operations;
 struct dir_entry_operations;
 struct file_operations;
-
+/*
+超级块
+*/
 struct super_block
 {
-	struct dir_entry * root;
+	struct dir_entry * root;//根目录项
 
 	struct super_block_operations * sb_ops;
 
-	void * private_sb_info;
+	void * private_sb_info;//超级块文件特有的信息
 };
-
+/*
+inode节点
+*/
 struct index_node
 {
 	unsigned long file_size;
@@ -61,12 +71,14 @@ struct index_node
 	struct file_operations * f_ops;
 	struct index_node_operations * inode_ops;
 
-	void * private_index_info;
+	void * private_index_info;//index文件特有的信息
 };
 
-#define FS_ATTR_FILE	(1UL << 0)
-#define FS_ATTR_DIR		(1UL << 1)
-
+#define FS_ATTR_FILE	(1UL << 0)	//文件项
+#define FS_ATTR_DIR		(1UL << 1)	//目录项
+/*
+描述文件/目录的层级关系
+*/
 struct dir_entry
 {
 	char * name;
@@ -79,18 +91,22 @@ struct dir_entry
 
 	struct dir_entry_operations * dir_ops;
 };
-
+/*
+file结构
+*/
 struct file
 {
-	long position;
-	unsigned long mode;
+	long position;//文件访问位置
+	unsigned long mode;//文件访问模式
 
 	struct dir_entry * dentry;
 
 	struct file_operations * f_ops;
 
-	void * private_data;
+	void * private_data;//file文件特有的信息
 };
+
+/*上述结构的相应接口*/
 
 struct super_block_operations
 {

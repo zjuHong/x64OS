@@ -3,7 +3,14 @@
 #define __LIB_H__
 
 #define NULL 0
-
+/** 
+ * @brief 根据结构体成员变量地址，获取结构体变量基地址。
+ * @param 
+ * 		-ptr：成员变量地址
+ * 		-type：变量所在结构体
+ * 		-member：成员变量名
+ * @return 
+ */
 #define container_of(ptr,type,member)							\
 ({											\
 	typeof(((type *)0)->member) * p = (ptr);					\
@@ -14,7 +21,7 @@
 #define sti() 		__asm__ __volatile__ ("sti	\n\t":::"memory")
 #define cli()	 	__asm__ __volatile__ ("cli	\n\t":::"memory")
 #define nop() 		__asm__ __volatile__ ("nop	\n\t")
-#define io_mfence() 	__asm__ __volatile__ ("mfence	\n\t":::"memory")
+#define io_mfence() 	__asm__ __volatile__ ("mfence	\n\t":::"memory")//串行化处理器的执行指令流（多处理器顺序）
 
 #define hlt() 		__asm__ __volatile__ ("hlt	\n\t")
 #define pause() 	__asm__ __volatile__ ("pause	\n\t")
@@ -287,10 +294,11 @@ inline int strncmp(char * FirstPart,char * SecondPart,long Count)
 	return __res;
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 求字符串长度
+ * @param 
+ * @return 
+ */
 inline int strlen(char * String)
 {
 	register int __res;
@@ -393,10 +401,14 @@ inline void io_out32(unsigned short port,unsigned int value)
 				);
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 一次从IO端口读写多个字节
+ * @param 
+ * 		-port：IO口
+ * 		-buffer：缓冲区
+ * 		-nr：向量号
+ * @return 
+ */
 #define port_insw(port,buffer,nr)	\
 __asm__ __volatile__("cld;rep;insw;mfence;"::"d"(port),"D"(buffer),"c"(nr):"memory")
 
@@ -410,7 +422,13 @@ inline unsigned long rdmsr(unsigned long address)
 	__asm__ __volatile__("rdmsr	\n\t":"=d"(tmp0),"=a"(tmp1):"c"(address):"memory");	
 	return (unsigned long)tmp0<<32 | tmp1;
 }
-
+/** 
+ * @brief 写msr寄存器
+ * @param 
+ * 		-address：地址
+ * 		-value：值
+ * @return 
+ */
 inline void wrmsr(unsigned long address,unsigned long value)
 {
 	__asm__ __volatile__("wrmsr	\n\t"::"d"(value >> 32),"a"(value & 0xffffffff),"c"(address):"memory");	
@@ -435,9 +453,13 @@ inline unsigned long get_rflags()
 				);
 	return tmp;
 }
-
+/** 
+ * @brief 检测应用程序提出的地址是否越界
+ * @param 
+ * @return 
+ */
 inline long verify_area(unsigned char* addr,unsigned long size)
-{
+{//为不消耗性能，不做页表映射检测
 	if(((unsigned long)addr + size) <= (unsigned long)0x00007fffffffffff )
 		return 1;
 	else

@@ -1,7 +1,9 @@
 #ifndef __FAT32_H__
 
 #define __FAT32_H__
-
+/*
+FAT32引导扇区
+*/
 struct FAT32_BootSector
 {
 	unsigned char BS_jmpBoot[3];
@@ -39,7 +41,9 @@ struct FAT32_BootSector
 	unsigned short BS_TrailSig;
 }__attribute__((packed));
 
-
+/*
+FAT32的FSInfo扇区
+*/
 struct FAT32_FSInfo
 {
 	unsigned int FSI_LeadSig;
@@ -59,6 +63,7 @@ struct FAT32_FSInfo
 #define ATTR_ARCHIVE	(1 << 5)
 #define ATTR_LONG_NAME	(ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID)
 
+/* FAT32目录项 */
 struct FAT32_Directory
 {
 	unsigned char DIR_Name[11];
@@ -80,6 +85,7 @@ struct FAT32_Directory
 #define LOWERCASE_BASE (8)
 #define LOWERCASE_EXT (16)
 
+/* FAT32长目录项 */
 struct FAT32_LongDirectory
 {
 	unsigned char LDIR_Ord;
@@ -95,18 +101,18 @@ struct FAT32_LongDirectory
 void DISK1_FAT32_FS_init();
 
 /////////////FAT32 for VFS
-
+/* 超级块特有的信息 */
 struct FAT32_sb_info
 {
 	unsigned long start_sector;
 	unsigned long sector_count;
 
-	long sector_per_cluster;
-	long bytes_per_cluster;
-	long bytes_per_sector;
+	long sector_per_cluster;//每簇扇区数
+	long bytes_per_cluster;//每簇字节数
+	long bytes_per_sector;//每扇区字节数
 
-	unsigned long Data_firstsector;
-	unsigned long FAT1_firstsector;
+	unsigned long Data_firstsector;//数据区起始扇区号
+	unsigned long FAT1_firstsector;//FAT1表其实扇区号
 	unsigned long sector_per_FAT;
 	unsigned long NumFATs;
 
@@ -115,7 +121,7 @@ struct FAT32_sb_info
 	
 	struct FAT32_FSInfo * fat_fsinfo;
 };
-
+/* index node特有的信息 */
 struct FAT32_inode_info
 {
 	unsigned long first_cluster;

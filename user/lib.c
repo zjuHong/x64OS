@@ -1,6 +1,6 @@
 #include "syscall.h"
 
-
+//函数定义宏，最终进行系统调用
 #define SYSFUNC_DEF(name)	_SYSFUNC_DEF_(name,__NR_##name)
 #define _SYSFUNC_DEF_(name,nr)	__SYSFUNC_DEF__(name,nr)
 #define __SYSFUNC_DEF__(name,nr)	\

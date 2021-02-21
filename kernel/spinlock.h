@@ -23,10 +23,11 @@ inline void spin_init(spinlock_T * lock)
 	lock->lock = 1;
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 加锁
+ * @param 
+ * @return 
+ */
 inline void spin_lock(spinlock_T * lock)
 {
 	preempt_disable();
@@ -45,10 +46,11 @@ inline void spin_lock(spinlock_T * lock)
 				);
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 解锁
+ * @param 
+ * @return 
+ */
 inline void spin_unlock(spinlock_T * lock)
 {
 	__asm__	__volatile__	(	"movq	$1,	%0	\n\t"
@@ -77,14 +79,22 @@ inline long spin_trylock(spinlock_T * lock)
 #define local_irq_restore(x)	__asm__ __volatile__("pushq %0 ; popfq"::"g"(x):"memory")
 #define local_irq_disable()	cli();
 #define local_irq_enable()	sti();
-
+/** 
+ * @brief 加锁时保存状态并关闭中断
+ * @param 
+ * @return 
+ */
 #define spin_lock_irqsave(lock,flags)	\
 do					\
 {					\
 	local_irq_save(flags);		\
 	spin_lock(lock);		\
 }while(0)
-
+/** 
+ * @brief 解锁时恢复中断状态
+ * @param 
+ * @return 
+ */
 #define spin_unlock_irqrestore(lock,flags)	\
 do						\
 {						\

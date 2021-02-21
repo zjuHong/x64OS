@@ -14,10 +14,15 @@ struct gate_struct
 extern struct desc_struct GDT_Table[];
 extern struct gate_struct IDT_Table[];
 
-/*
-
-*/
-
+/** 
+ * @brief 初始化段描述符
+ * @param 
+ * 		-gate_selector_addr 异常在IDT_Table的地址
+ * 		-attr 描述符类型
+ * 		-ist 1
+ * 		-code_addr 异常处理函数地址
+ * @return 
+ */
 #define _set_gate(gate_selector_addr,attr,ist,code_addr)	\
 do								\
 {	unsigned long __d0,__d1;				\
@@ -53,10 +58,12 @@ inline void set_tss_descriptor(unsigned int n,void * addr)
 	*(unsigned long *)(GDT_Table + n + 1) = ((unsigned long)addr >> 32 & 0xffffffff) | 0;
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 将TSS段描述符的段选择子加载到TR寄存器
+ * @param 
+ * 		-n 
+ * @return 
+ */
 #define load_TR(n) 							\
 do{									\
 	__asm__ __volatile__(	"ltr	%%ax"				\
@@ -65,47 +72,53 @@ do{									\
 				:"memory");				\
 }while(0)
 
-/*
-
-*/
-
+/** 
+ * @brief 异常初始化
+ * @param 
+ * @return 
+ */
 inline void set_intr_gate(unsigned int n,unsigned char ist,void * addr)
 {
 	_set_gate(IDT_Table + n , 0x8E , ist , addr);	//P,DPL=0,TYPE=E
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 异常初始化
+ * @param 
+ * @return 
+ */
 inline void set_trap_gate(unsigned int n,unsigned char ist,void * addr)
 {
 	_set_gate(IDT_Table + n , 0x8F , ist , addr);	//P,DPL=0,TYPE=F
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 异常初始化
+ * @param 
+ * @return 
+ */
 inline void set_system_gate(unsigned int n,unsigned char ist,void * addr)
 {
 	_set_gate(IDT_Table + n , 0xEF , ist , addr);	//P,DPL=3,TYPE=F
 }
-
-/*
-
-*/
-
+/** 
+ * @brief 异常初始化
+ * @param 
+ * @return 
+ */
 inline void set_system_intr_gate(unsigned int n,unsigned char ist,void * addr)	//int3
 {
 	_set_gate(IDT_Table + n , 0xEE , ist , addr);	//P,DPL=3,TYPE=E
 }
 
 
-/*
-
-*/
-
+/** 
+ * @brief 配置TSS段内的各个RSP和IST项
+ * @param 
+ * 		-Table TSS表基地址 
+ * 		-rsp ist 各项 
+ * @return 
+ */
 void set_tss64(unsigned int * Table,unsigned long rsp0,unsigned long rsp1,unsigned long rsp2,unsigned long ist1,unsigned long ist2,unsigned long ist3,
 unsigned long ist4,unsigned long ist5,unsigned long ist6,unsigned long ist7)
 {

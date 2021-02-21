@@ -10,6 +10,7 @@
 #include "schedule.h"
 #include "SMP.h"
 
+//HPET中断控制器
 hw_int_controller HPET_int_controller = 
 {
 	.enable = IOAPIC_enable,
@@ -19,14 +20,19 @@ hw_int_controller HPET_int_controller =
 	.ack = IOAPIC_edge_ack,
 };
 
+/** 
+ * @brief 定时器中断处理函数
+ * @param 
+ * @return 
+ */
 void HPET_handler(unsigned long nr, unsigned long parameter, struct pt_regs * regs)
 {
 	jiffies++;
 
 	if((container_of(list_next(&timer_list_head.list),struct timer_list,list)->expire_jiffies <= jiffies))
-		set_softirq_status(TIMER_SIRQ);
+		set_softirq_status(TIMER_SIRQ);//注册软中断
 	
-	switch(current->priority)
+	switch(current->priority)//时间片刷新
 	{
 		case 0:
 		case 1:
@@ -41,12 +47,16 @@ void HPET_handler(unsigned long nr, unsigned long parameter, struct pt_regs * re
 			break;
 	}
 
-	if(task_schedule[SMP_cpu_id()].CPU_exec_task_jiffies <= 0)
+	if(task_schedule[SMP_cpu_id()].CPU_exec_task_jiffies <= 0)//时间片消耗完
 		current->flags |= NEED_SCHEDULE;
 }
 
 
-
+/** 
+ * @brief 定时器初始化函数
+ * @param 
+ * @return 
+ */
 void HPET_init()
 {
 	unsigned int x;
@@ -84,7 +94,7 @@ void HPET_init()
 	entry.destination.physical.phy_dest = 0;
 	entry.destination.physical.reserved2 = 0;
 
-	register_irq(34, &entry , &HPET_handler, NULL, &HPET_int_controller, "HPET");
+	register_irq(34, &entry , &HPET_handler, NULL, &HPET_int_controller, "HPET");//向量号34
 	
 //	color_printk(RED,BLACK,"HPET - GCAP_ID:<%#018lx>\n",*(unsigned long *)HPET_addr);
 
@@ -95,11 +105,11 @@ void HPET_init()
 	*(unsigned long *)(HPET_addr + 0x100) = 0x004c;
 	io_mfence();
 
-	//1S
+	//每隔1S产生一次中断信号
 	*(unsigned long *)(HPET_addr + 0x108) = 14318179;
 	io_mfence();
 
-	//init MAIN_CNT & get CMOS time
+	//向 MAIN_CNT 寄存器写入初始值 & get CMOS time
 	get_cmos_time(&time);
 	*(unsigned long *)(HPET_addr + 0xf0) = 0;
 	io_mfence();

@@ -17,18 +17,6 @@
 
 #define	PORT_DISK0_ALT_STA_CTL	0x3f6
 
-
-#define PORT_DISK1_DATA			0x170
-#define	PORT_DISK1_ERR_FEATURE	0x171
-#define	PORT_DISK1_SECTOR_CNT	0x172
-#define	PORT_DISK1_SECTOR_LOW	0x173
-#define	PORT_DISK1_SECTOR_MID	0x174
-#define	PORT_DISK1_SECTOR_HIGH	0x175
-#define	PORT_DISK1_DEVICE		0x176
-#define	PORT_DISK1_STATUS_CMD	0x177
-
-#define	PORT_DISK1_ALT_STA_CTL	0x376
-
 #define	DISK_STATUS_BUSY		(1 << 7)
 #define	DISK_STATUS_READY		(1 << 6)
 #define	DISK_STATUS_SEEK		(1 << 4)
@@ -45,24 +33,25 @@ struct block_buffer_node
 	unsigned char cmd;
 	unsigned long LBA;
 	unsigned char * buffer;
-	void(* end_handler)(unsigned long nr, unsigned long parameter);
+	void(* end_handler)(unsigned long nr, unsigned long parameter);//请求结束后的处理方法
 
 	wait_queue_T wait_queue;
 };
 
 struct request_queue
 {
-//	struct List queue_list;
-	wait_queue_T wait_queue_list;
-	struct block_buffer_node *in_using;
-	long block_request_count;
+	wait_queue_T wait_queue_list;//请求队列链表
+	struct block_buffer_node *in_using;//正在处理的硬盘操作请求
+	long block_request_count;//剩余请求数
 };
 
 extern struct request_queue disk_request;
 
 extern struct block_device_operation IDE_device_operation;
 
-
+/*
+硬盘信息结构
+*/
 struct Disk_Identify_Info
 {
 	//	0	General configuration bit-significant information

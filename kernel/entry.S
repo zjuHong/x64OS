@@ -1,5 +1,6 @@
 #include "linkage.h"
 
+////寄存器在栈中的偏移值
 R15	=	0x00
 R14	=	0x08
 R13	=	0x10
@@ -32,6 +33,7 @@ TSK_PREEMPT	=	0x10
 TSK_SIGNAL	=	0x18
 
 
+////还原程序的执行现场
 RESTORE_ALL:
 	popq	%r15;		
 	popq	%r14;		
@@ -59,14 +61,14 @@ RESTORE_ALL:
 	movq	$-32768,reg;	\
 	andq	%rsp,	reg
 
-ret_from_exception:
+ret_from_exception:	////异常后处理函数，判断是否需进程调度，并还原现场
 	
 ENTRY(ret_from_intr)
 	movq	$-1,	%rcx
-	testq	softirq_status(%rip),	%rcx	////check softirq
+	testq	softirq_status(%rip),	%rcx	////check softirq 判断是否存在置位的中断号
 	jnz	softirq_handler
 	GET_CURRENT(%rbx)
-	movq	TSK_PREEMPT(%rbx),	%rcx		////check preempt
+	movq	TSK_PREEMPT(%rbx),	%rcx		////check preempt 拥有自旋锁的时候关闭抢占
 	cmpq	$0,	%rcx
 	jne		RESTORE_ALL
 	movq	TSK_FLAGS(%rbx),	%rcx		////try schedule
@@ -89,7 +91,7 @@ reschedule:
 	callq	schedule						////do schedule
 	jmp	RESTORE_ALL
 
-
+////系统调用，期间会调换RDX/RCX和R10/R11的数值
 ENTRY(system_call)
 	sti
 
@@ -126,6 +128,7 @@ ENTRY(system_call)
 	callq	*(%rbx,%rax,8)
 	movq	%rax,	RAX(%rsp)
 
+////结束系统调用：sysexit
 ENTRY(ret_system_call)
 
 	popq	%r15
@@ -160,11 +163,11 @@ ENTRY(divide_error)
 	pushq	$0
 	pushq	%rax
 	leaq	do_divide_error(%rip),	%rax
-	xchgq	%rax,	(%rsp)
+	xchgq	%rax,	(%rsp)	////将do_divide_error起始地址压入栈
 
 error_code:
 	pushq	%rax
-	movq	%es,	%rax
+	movq	%es,	%rax	////ds es重新加载为内核段
 	pushq	%rax
 	movq	%ds,	%rax
 	pushq	%rax
@@ -186,17 +189,17 @@ error_code:
 	pushq	%r15	
 	
 	cld
-	movq	ERRCODE(%rsp),	%rsi
-	movq	FUNC(%rsp),	%rdx	
+	movq	ERRCODE(%rsp),	%rsi	////错误码 -> rsi
+	movq	FUNC(%rsp),	%rdx	////处理函数起始地址 -> rdx
 
 	movq	$0x10,	%rdi
 	movq	%rdi,	%ds
 	movq	%rdi,	%es
 
-	movq	%rsp,	%rdi
+	movq	%rsp,	%rdi	////栈指针 -> rdi
 	////GET_CURRENT(%ebx)
 
-	callq 	*%rdx
+	callq 	*%rdx			////执行异常函数
 
 	jmp	ret_from_exception	
 

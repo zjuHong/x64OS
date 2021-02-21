@@ -19,7 +19,7 @@
 
 #define WHITE 	0x00ffffff		//白
 #define BLACK 	0x00000000		//黑
-#define RED	0x00ff0000		//红
+#define RED		0x00ff0000		//红
 #define ORANGE	0x00ff8000		//橙
 #define YELLOW	0x00ffff00		//黄
 #define GREEN	0x0000ff00		//绿
@@ -35,17 +35,17 @@ extern unsigned char font_ascii[256][16];
 
 struct position
 {
-	int XResolution;
+	int XResolution;//屏幕分辨率
 	int YResolution;
 
-	int XPosition;
+	int XPosition;//字符光标所在位置
 	int YPosition;
 
-	int XCharSize;
+	int XCharSize;//字符像素矩阵
 	int YCharSize;
 
-	unsigned int * FB_addr;
-	unsigned long FB_length;
+	unsigned int * FB_addr;//帧缓存区起始地址
+	unsigned long FB_length;//帧缓存区容量
 
 	spinlock_T printk_lock;
 };

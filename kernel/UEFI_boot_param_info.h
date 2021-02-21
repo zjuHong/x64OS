@@ -17,7 +17,7 @@ struct EFI_E820_MEMORY_DESCRIPTOR
 	unsigned long address;
 	unsigned long length;
 	unsigned int  type;
-}__attribute__((packed));
+}__attribute__((packed));//__attribute__((packed));不会生成对齐空间
 
 struct EFI_E820_MEMORY_DESCRIPTOR_INFORMATION
 {

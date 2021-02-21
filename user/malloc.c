@@ -5,7 +5,11 @@ static unsigned long brk_used_address = 0;
 static unsigned long brk_end_address = 0;
 
 #define	SIZE_ALIGN	(8*sizeof(unsigned long))
-
+/** 
+ * @brief 内存申请函数
+ * @param 
+ * @return 
+ */
 void * malloc(unsigned long size)
 {
 	unsigned long address = 0;

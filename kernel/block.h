@@ -3,7 +3,9 @@
 #define __BLOCK_H__
 
 
-
+/*
+块设备操作接口
+*/
 struct block_device_operation
 {
 	long (* open)();

@@ -347,10 +347,11 @@ void do_virtualization_exception(struct pt_regs * regs,unsigned long error_code)
 		hlt();
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 初始化IDT各表项
+ * @param 
+ * @return 
+ */
 void sys_vector_init()
 {
 	set_trap_gate(0,0,divide_error);

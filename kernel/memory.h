@@ -6,16 +6,16 @@
 #include "lib.h"
 
 //	8Bytes per cell
-#define PTRS_PER_PAGE	512
+#define PTRS_PER_PAGE	512		//页表项个数	4KB / 8B
 
 /*
 
 */
 
-#define PAGE_OFFSET	((unsigned long)0xffff800000000000)
+#define PAGE_OFFSET	((unsigned long)0xffff800000000000)	//内核层起始线性地址
 #define	TASK_SIZE	((unsigned long)0x00007fffffffffff)
 
-#define PAGE_GDT_SHIFT	39
+#define PAGE_GDT_SHIFT	39//几个指数
 #define PAGE_1G_SHIFT	30
 #define PAGE_2M_SHIFT	21
 #define PAGE_4K_SHIFT	12
@@ -23,14 +23,14 @@
 #define PAGE_2M_SIZE	(1UL << PAGE_2M_SHIFT)
 #define PAGE_4K_SIZE	(1UL << PAGE_4K_SHIFT)
 
-#define PAGE_2M_MASK	(~ (PAGE_2M_SIZE - 1))
+#define PAGE_2M_MASK	(~ (PAGE_2M_SIZE - 1))//屏蔽低于2m的数值
 #define PAGE_4K_MASK	(~ (PAGE_4K_SIZE - 1))
 
-#define PAGE_2M_ALIGN(addr)	(((unsigned long)(addr) + PAGE_2M_SIZE - 1) & PAGE_2M_MASK)
+#define PAGE_2M_ALIGN(addr)	(((unsigned long)(addr) + PAGE_2M_SIZE - 1) & PAGE_2M_MASK)//按2m页的上边界对齐
 #define PAGE_4K_ALIGN(addr)	(((unsigned long)(addr) + PAGE_4K_SIZE - 1) & PAGE_4K_MASK)
 
-#define Virt_To_Phy(addr)	((unsigned long)(addr) - PAGE_OFFSET)
-#define Phy_To_Virt(addr)	((unsigned long *)((unsigned long)(addr) + PAGE_OFFSET))
+#define Virt_To_Phy(addr)	((unsigned long)(addr) - PAGE_OFFSET)//虚拟地址转换为物理地址
+#define Phy_To_Virt(addr)	((unsigned long *)((unsigned long)(addr) + PAGE_OFFSET))//物理转换为虚拟地址
 
 #define Virt_To_2M_Page(kaddr)	(memory_management_struct.pages_struct + (Virt_To_Phy(kaddr) >> PAGE_2M_SHIFT))
 #define Phy_to_2M_Page(kaddr)	(memory_management_struct.pages_struct + ((unsigned long)(kaddr) >> PAGE_2M_SHIFT))
@@ -109,9 +109,8 @@ typedef struct {unsigned long pt;} pt_t;
 #define set_pt(ptptr,ptval)		(*(ptptr) = (ptval))
 
 /*
-
+内存管理全局结构体
 */
-
 struct Global_Memory_Descriptor
 {
 	struct EFI_E820_MEMORY_DESCRIPTOR 	e820[32];
@@ -147,31 +146,33 @@ struct Global_Memory_Descriptor
 
 ////struct page attribute
 
-//	mapped=1 or un-mapped=0 
+//	是否在页表映射：mapped=1 or un-mapped=0 
 #define PG_PTable_Maped	(1 << 0)
 
-//	init-code=1 or normal-code/data=0
+//	是否为内核初始化程序：init-code=1 or normal-code/data=0
 #define PG_Kernel_Init	(1 << 1)
 
-//	device=1 or memory=0
+//	设备寄存器还是物理内存空间：device=1 or memory=0
 #define PG_Device	(1 << 2)
 
-//	kernel=1 or user=0
+//	内核/应用层地址空间：kernel=1 or user=0
 #define PG_Kernel	(1 << 3)
 
-//	shared=1 or single-use=0 
+//	已被/未被共享：shared=1 or single-use=0 
 #define PG_Shared	(1 << 4)
 
-
+/*
+物理页管理结构
+*/
 struct Page
 {
-	struct Zone *	zone_struct;
-	unsigned long	PHY_address;
-	unsigned long	attribute;
+	struct Zone *	zone_struct;//本页所属的区域结构体
+	unsigned long	PHY_address;//物理地址
+	unsigned long	attribute;//属性
 
-	unsigned long	reference_count;
+	unsigned long	reference_count;//引用次数
 	
-	unsigned long	age;
+	unsigned long	age;//创建时间
 };
 
 //// each zone index
@@ -183,33 +184,31 @@ int ZONE_UNMAPED_INDEX	= 0;	//above 1GB RAM,unmapped in pagetable
 #define MAX_NR_ZONES	10	//max zone
 
 /*
-
+区域管理结构
 */
-
 struct Zone
 {
-	struct Page * 	pages_group;
-	unsigned long	pages_length;
+	struct Page * 	pages_group;//page结构体数组指针
+	unsigned long	pages_length;//本区域page数组长度
 	
-	unsigned long	zone_start_address;
-	unsigned long	zone_end_address;
+	unsigned long	zone_start_address;//本区域起始页对齐地址
+	unsigned long	zone_end_address;//本区域结束页对齐地址
 	unsigned long	zone_length;
 	unsigned long	attribute;
 
-	struct Global_Memory_Descriptor * GMD_struct;
+	struct Global_Memory_Descriptor * GMD_struct;//指向全局结构体
 
-	unsigned long	page_using_count;
-	unsigned long	page_free_count;
+	unsigned long	page_using_count;//已使用物理页内存数量
+	unsigned long	page_free_count;//未使用物理页内存数量
 
-	unsigned long	total_pages_link;
+	unsigned long	total_pages_link;//引用次数
 };
 
 extern struct Global_Memory_Descriptor memory_management_struct;
 
 /*
-
+管理每个物理页为单位的内存空间
 */
-
 struct Slab
 {
 	struct List list;
@@ -218,14 +217,16 @@ struct Slab
 	unsigned long using_count;
 	unsigned long free_count;
 
-	void * Vaddress;
+	void * Vaddress;//当前页面所在线性地址
 
 	unsigned long color_length;
 	unsigned long color_count;
 
-	unsigned long * color_map;
+	unsigned long * color_map;//着色位图
 };
-
+/*
+内存池抽象结构
+*/
 struct Slab_cache
 {
 	unsigned long	size;
@@ -243,7 +244,7 @@ struct Slab_cache
 
 extern struct Slab_cache kmalloc_cache_size[16];
 
-#define SIZEOF_LONG_ALIGN(size) ((size + sizeof(long) - 1) & ~(sizeof(long) - 1) )
+#define SIZEOF_LONG_ALIGN(size) ((size + sizeof(long) - 1) & ~(sizeof(long) - 1) )//按long对齐
 #define SIZEOF_INT_ALIGN(size) ((size + sizeof(int) - 1) & ~(sizeof(int) - 1) )
 
 /*
@@ -252,10 +253,12 @@ extern struct Slab_cache kmalloc_cache_size[16];
 
 #define	flush_tlb_one(addr)	\
 	__asm__ __volatile__	("invlpg	(%0)	\n\t"::"r"(addr):"memory")
-/*
 
-*/
-
+/** 
+ * @brief 重新赋值CR3寄存器，刷新页表
+ * @param 
+ * @return 
+ */
 #define flush_tlb()						\
 do								\
 {								\
@@ -269,10 +272,12 @@ do								\
 				);				\
 }while(0)
 
-/*
-
-*/
-
+/** 
+ * @brief 获取CR3寄存器的页目录物理基地址
+ * @param 
+ * @return 
+ * 		-tmp 页目录物理基地址
+ */
 inline unsigned long * Get_gdt()
 {
 	unsigned long * tmp;

@@ -8,10 +8,11 @@ static char buf[4096]={0};
 
 struct position Pos;
 
-/*
-
-*/
-
+/** 
+ * @brief 重新映射VBE帧缓存区
+ * @param 
+ * @return 
+ */
 void frame_buffer_init()
 {
 	////re init frame buffer;
@@ -52,10 +53,16 @@ void frame_buffer_init()
 }
 
 
-/*
-
-*/
-
+/** 
+ * @brief 将字符打印在屏幕上
+ * @param 
+ * 		-fb 帧缓存线性地址
+ *	 	-Xsize：行分辨率	
+ * 		-x y：像素点位置
+ * 		-FRcolor、BKcolor：前/后背景色
+ * 		-font：字符位图
+ * @return 
+ */
 void putchar(unsigned int * fb,int Xsize,int x,int y,unsigned int FRcolor,unsigned int BKcolor,unsigned char font)
 {
 	int i = 0,j = 0;
@@ -64,27 +71,28 @@ void putchar(unsigned int * fb,int Xsize,int x,int y,unsigned int FRcolor,unsign
 	int testval = 0;
 	fontp = font_ascii[font];
 
-	for(i = 0; i< 16;i++)
+	for (i = 0; i < 16; i++)
 	{
-		addr = fb + Xsize * ( y + i ) + x;
+		addr = fb + Xsize * (y + i) + x;//待显示字符的起始线性地址
 		testval = 0x100;
-		for(j = 0;j < 8;j ++)		
+		for (j = 0; j < 8; j++)
 		{
 			testval = testval >> 1;
-			if(*fontp & testval)
+			if (*fontp & testval)
 				*addr = FRcolor;
 			else
 				*addr = BKcolor;
 			addr++;
 		}
-		fontp++;		
+		fontp++;
 	}
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 将字符转换为数值
+ * @param 
+ * @return 
+ */
 int skip_atoi(const char **s)
 {
 	int i=0;
@@ -94,10 +102,11 @@ int skip_atoi(const char **s)
 	return i;
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 将整数值按照指定进制规格转换成字符串
+ * @param 
+ * @return 
+ */
 static char * number(char * str, long num, int base, int size, int precision,	int type)
 {
 	char c,sign,tmp[50];
@@ -153,10 +162,11 @@ static char * number(char * str, long num, int base, int size, int precision,	in
 }
 
 
-/*
-
-*/
-
+/** 
+ * @brief 格式化字符串的解析过程
+ * @param 
+ * @return 
+ */
 int vsprintf(char * buf,const char *fmt, va_list args)
 {
 	char * str,*s;
@@ -170,7 +180,7 @@ int vsprintf(char * buf,const char *fmt, va_list args)
 	for(str = buf; *fmt; fmt++)
 	{
 
-		if(*fmt != '%')
+		if(*fmt != '%')//为可显示字符
 		{
 			*str++ = *fmt;
 			continue;
@@ -178,7 +188,7 @@ int vsprintf(char * buf,const char *fmt, va_list args)
 		flags = 0;
 		repeat:
 			fmt++;
-			switch(*fmt)
+			switch(*fmt)//%后边可接如下字符，修改标志位
 			{
 				case '-':flags |= LEFT;	
 				goto repeat;
@@ -197,7 +207,7 @@ int vsprintf(char * buf,const char *fmt, va_list args)
 			field_width = -1;
 			if(is_digit(*fmt))
 				field_width = skip_atoi(&fmt);
-			else if(*fmt == '*')
+			else if(*fmt == '*')//数据宽度由可变参数提供
 			{
 				fmt++;
 				field_width = va_arg(args, int);
@@ -211,7 +221,7 @@ int vsprintf(char * buf,const char *fmt, va_list args)
 			/* get the precision */
 
 			precision = -1;
-			if(*fmt == '.')
+			if(*fmt == '.')//数据显示的精度
 			{
 				fmt++;
 				if(is_digit(*fmt))
@@ -234,7 +244,7 @@ int vsprintf(char * buf,const char *fmt, va_list args)
 							
 			switch(*fmt)
 			{
-				case 'c':
+				case 'c'://字符
 
 					if(!(flags & LEFT))
 						while(--field_width > 0)
@@ -244,7 +254,7 @@ int vsprintf(char * buf,const char *fmt, va_list args)
 						*str++ = ' ';
 					break;
 
-				case 's':
+				case 's'://字符串
 				
 					s = va_arg(args,char *);
 					if(!s)
@@ -263,7 +273,7 @@ int vsprintf(char * buf,const char *fmt, va_list args)
 					while(len < field_width--)
 						*str++ = ' ';
 					break;
-
+				//几种进制
 				case 'o':
 					
 					if(qualifier == 'l')
@@ -307,7 +317,7 @@ int vsprintf(char * buf,const char *fmt, va_list args)
 						str = number(str,va_arg(args,int),10,field_width,precision,flags);
 					break;
 
-				case 'n':
+				case 'n'://已格式化的字符串长度
 					
 					if(qualifier == 'l')
 					{
@@ -321,7 +331,7 @@ int vsprintf(char * buf,const char *fmt, va_list args)
 					}
 					break;
 
-				case '%':
+				case '%'://转义字符
 					
 					*str++ = '%';
 					break;
@@ -341,10 +351,14 @@ int vsprintf(char * buf,const char *fmt, va_list args)
 	return str - buf;
 }
 
-/*
-
-*/
-
+/** 
+ * @brief 屏幕打印函数
+ * @param 
+ * 		-FRcolor：前景色
+ * 		-BKcolor：背景色
+ * 		-fmt：参数
+ * @return 
+ */
 int color_printk(unsigned int FRcolor,unsigned int BKcolor,const char * fmt,...)
 {
 	int i = 0;
@@ -353,10 +367,10 @@ int color_printk(unsigned int FRcolor,unsigned int BKcolor,const char * fmt,...)
 	unsigned long flags = 0;
 	va_list args;
 
-	spin_lock_irqsave(&Pos.printk_lock,flags);
+	spin_lock_irqsave(&Pos.printk_lock,flags);//上锁
 
 	va_start(args, fmt);
-	i = vsprintf(buf,fmt, args);
+	i = vsprintf(buf,fmt, args);//解析格式化字符串及参数
 	va_end(args);
 
 	for(count = 0;count < i || line;count++)
@@ -367,12 +381,12 @@ int color_printk(unsigned int FRcolor,unsigned int BKcolor,const char * fmt,...)
 			count--;
 			goto Label_tab;
 		}
-		if((unsigned char)*(buf + count) == '\n')
+		if((unsigned char)*(buf + count) == '\n')//换行
 		{
 			Pos.YPosition++;
 			Pos.XPosition = 0;
 		}
-		else if((unsigned char)*(buf + count) == '\b')
+		else if((unsigned char)*(buf + count) == '\b')//删除
 		{
 			Pos.XPosition--;
 			if(Pos.XPosition < 0)
@@ -384,7 +398,7 @@ int color_printk(unsigned int FRcolor,unsigned int BKcolor,const char * fmt,...)
 			}	
 			putchar(Pos.FB_addr , Pos.XResolution , Pos.XPosition * Pos.XCharSize , Pos.YPosition * Pos.YCharSize , FRcolor , BKcolor , ' ');	
 		}
-		else if((unsigned char)*(buf + count) == '\t')
+		else if((unsigned char)*(buf + count) == '\t')//tab
 		{
 			line = ((Pos.XPosition + 8) & ~(8 - 1)) - Pos.XPosition;
 
@@ -393,26 +407,24 @@ Label_tab:
 			putchar(Pos.FB_addr , Pos.XResolution , Pos.XPosition * Pos.XCharSize , Pos.YPosition * Pos.YCharSize , FRcolor , BKcolor , ' ');	
 			Pos.XPosition++;
 		}
-		else
+		else//正常字符
 		{
 			putchar(Pos.FB_addr , Pos.XResolution , Pos.XPosition * Pos.XCharSize , Pos.YPosition * Pos.YCharSize , FRcolor , BKcolor , (unsigned char)*(buf + count));
 			Pos.XPosition++;
 		}
 
 
-		if(Pos.XPosition >= (Pos.XResolution / Pos.XCharSize))
+		if(Pos.XPosition >= (Pos.XResolution / Pos.XCharSize))//最后一列
 		{
 			Pos.YPosition++;
 			Pos.XPosition = 0;
 		}
-		if(Pos.YPosition >= (Pos.YResolution / Pos.YCharSize))
+		if(Pos.YPosition >= (Pos.YResolution / Pos.YCharSize))//最后一行
 		{
 			Pos.YPosition = 0;
 		}
-
 	}
-
-	spin_unlock_irqrestore(&Pos.printk_lock,flags);
+	spin_unlock_irqrestore(&Pos.printk_lock,flags);//解除锁
 
 	return i;
 }

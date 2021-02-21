@@ -6,9 +6,9 @@
 
 struct schedule
 {
-	long running_task_count;
-	long CPU_exec_task_jiffies;
-	struct task_struct task_queue;
+	long running_task_count;//队列内进程数
+	long CPU_exec_task_jiffies;//可执行时间片数量
+	struct task_struct task_queue;//进程准备就绪队列的队列头
 };
 
 extern struct schedule task_schedule[NR_CPUS];

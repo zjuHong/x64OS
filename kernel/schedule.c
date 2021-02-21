@@ -6,7 +6,11 @@
 #include "SMP.h"
 
 struct schedule task_schedule[NR_CPUS];
-
+/** 
+ * @brief 就绪进程出队函数
+ * @param 
+ * @return 
+ */
 struct task_struct *get_next_task()
 {
 	struct task_struct * tsk = NULL;
@@ -23,7 +27,11 @@ struct task_struct *get_next_task()
 
 	return tsk;
 }
-
+/** 
+ * @brief 就绪进程入队函数
+ * @param 
+ * @return 
+ */
 void insert_task_queue(struct task_struct *tsk)
 {
 	struct task_struct *tmp = NULL;
@@ -45,27 +53,31 @@ void insert_task_queue(struct task_struct *tsk)
 	list_add_to_before(&tmp->list,&tsk->list);
 	task_schedule[SMP_cpu_id()].running_task_count += 1;
 }
-
+/** 
+ * @brief 进程调度器，此处为了直观验证shell的效果，将其注释
+ * @param 
+ * @return 
+ */
 void schedule()
 {
 }
 /*	struct task_struct *tsk = NULL;
 	long cpu_id = SMP_cpu_id();
 
-	cli();
+	cli();//关中断
 
 	current->flags &= ~NEED_SCHEDULE;
 	tsk = get_next_task();
 //	color_printk(YELLOW,BLACK,"RFLAGS:%#018lx\n",get_rflags());
 	color_printk(YELLOW,BLACK,"#schedule:%ld,pid:%ld(%ld)=>>pid:%ld(%ld)#\n",jiffies,current->pid,current->vrun_time,tsk->pid,tsk->vrun_time);
 
-	if(current->vrun_time >= tsk->vrun_time || current->state != TASK_RUNNING)
+	if(current->vrun_time >= tsk->vrun_time || current->state != TASK_RUNNING)//时间片用完或者状态改变
 	{
 		if(current->state == TASK_RUNNING)
 			insert_task_queue(current);
 			
-		if(!task_schedule[cpu_id].CPU_exec_task_jiffies)
-			switch(tsk->priority)
+		if(!task_schedule[cpu_id].CPU_exec_task_jiffies)//重新分配时间片
+			switch(tsk->priority)//根据进程优先级调整时间片消耗速度
 			{
 				case 0:
 				case 1:
@@ -80,7 +92,7 @@ void schedule()
 		switch_mm(current,tsk);
 		switch_to(current,tsk);	
 	}
-	else
+	else //当前进程的运行时间最少
 	{
 		insert_task_queue(tsk);
 		
@@ -98,9 +110,15 @@ void schedule()
 			}
 	}
 
-	sti();
+	sti();//恢复中断
 }
 */
+
+/** 
+ * @brief 就绪队列初始化
+ * @param 
+ * @return 
+ */
 void schedule_init()
 {
 	int i = 0;
@@ -109,11 +127,9 @@ void schedule_init()
 	for(i = 0;i<NR_CPUS;i++)
 	{
 		list_init(&task_schedule[i].task_queue.list);
-		task_schedule[i].task_queue.vrun_time = 0x7fffffffffffffff;
+		task_schedule[i].task_queue.vrun_time = 0x7fffffffffffffff;//idle进程暂时设置为最大值
 
 		task_schedule[i].running_task_count = 1;
 		task_schedule[i].CPU_exec_task_jiffies = 4;
 	}
 }
-
-
