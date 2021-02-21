@@ -30,7 +30,11 @@
 */
 
 struct KERNEL_BOOT_PARAMETER_INFORMATION *boot_para_info = (struct KERNEL_BOOT_PARAMETER_INFORMATION *)0xffff800000060000;
-
+/** 
+ * @brief 内核主函数
+ * @param 
+ * @return 
+ */
 void Start_Kernel(void)
 {
 	unsigned int i;
@@ -130,6 +134,7 @@ void Start_Kernel(void)
 	sti();
 
 	color_printk(RED,BLACK,"start while(1) \n");
+	
 	while(1)
 	{
 		color_printk(WHITE,BLACK,"[SHELL]#:");
